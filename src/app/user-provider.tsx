@@ -5,16 +5,18 @@ import { currentUser } from '@clerk/nextjs/server';
 
 async function UserProvider({ children }: { children: React.ReactNode }) {
   const user = await currentUser()
-  const prismaUser = await prisma.user.findUnique({
-    where: {
-      id: user?.id
+  if (user) {
+    const prismaUser = await prisma.user.findUnique({
+      where: {
+        id: user?.id
+      }
+    })
+    if (!prismaUser && user) {
+      console.log('creating user...')
+      createUser()
+    } else {
+      console.log('user already exists...')
     }
-  })
-  if (!prismaUser && user) {
-    console.log('creating user...')
-    createUser()
-  } else {
-    console.log('user already exists...')
   }
 
   return (
