@@ -34,10 +34,11 @@ export default function RootLayout({
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
+          <div className="bg-gradient-to-br from-teal-50 to-teal-600 fixed -z-10 h-full w-full dark:from-black dark:to-emerald-700"></div>
           <UserProvider>
             <ThemeProvider
               attribute="class"
-              defaultTheme="system"
+              defaultTheme="light"
               enableSystem
               disableTransitionOnChange
             >

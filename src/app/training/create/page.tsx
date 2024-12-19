@@ -1,17 +1,12 @@
-import { createTraining } from '@/actions/actions'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import React from 'react'
+import FormTrining from './form'
 
 function CreateTreino() {
+
   return (
-    <div className='container mx-auto mt-16'>
-      <form action={createTraining} className='w-[380px] flex flex-col gap-3 items-start'>
-        <Input type="text" name='label' />
-        <Button>
-          CADASTRAR
-        </Button>
-      </form>
+    <div className='container mx-auto px-4 md:p-6'>
+      <h1 className='text-xl md:text-2xl font-medium mb-3'>Formulário de Treino:</h1>
+      <FormTrining />
     </div>
   )
 }

@@ -1,19 +1,8 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
-
-import { cn } from "@/lib/utils"
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-  navigationMenuTriggerStyle,
-} from "@/components/ui/navigation-menu"
-import { ListOrdered } from "lucide-react"
+import { Menubar, MenubarContent, MenubarItem, MenubarMenu, MenubarTrigger } from "./ui/menubar"
+import Link from "next/link";
 
 type TMenu = {
   title: string;
@@ -61,65 +50,34 @@ const menus: TMenu[] = [
 ]
 
 export default function HeaderNavigationMenu() {
+
   return (
-    <NavigationMenu>
-      <NavigationMenuList>
-        {menus.map((menu, key) => {
-          if (!menu.submenu) {
-            return (
-              <NavigationMenuItem key={key}>
-                <Link href={menu.href} legacyBehavior passHref>
-                  <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-                    {menu.title}
-                  </NavigationMenuLink>
-                </Link>
-              </NavigationMenuItem>
-            )
-          }
+    <Menubar className="border-0 shadow-none bg-transparent">
+      {menus.map((menu, key) => {
+        if (!menu.submenu) {
           return (
-            <NavigationMenuItem key={key}>
-              <NavigationMenuTrigger>{menu.title}</NavigationMenuTrigger>
-              <NavigationMenuContent>
-                <ul className="flex flex-col gap-2 p-4">
-                  {menu.submenu.map((submenu) => (
-                    <ListItem
-                      key={submenu.title}
-                      title={submenu.title}
-                      href={submenu.href} />
-                  ))}
-                </ul>
-              </NavigationMenuContent>
-            </NavigationMenuItem>
+            <MenubarMenu key={menu.title}>
+              <Link href={menu.href} passHref>
+                <MenubarTrigger>{menu.title}</MenubarTrigger>
+              </Link>
+            </MenubarMenu>
           )
-        })}
-      </NavigationMenuList>
-    </NavigationMenu>
+        }
+        return (
+          <MenubarMenu key={menu.title}>
+            <MenubarTrigger>{menu.title}</MenubarTrigger>
+            <MenubarContent>
+              {menu.submenu.map((submenu, key) => (
+                <Link key={key} href={submenu.href} passHref>
+                  <MenubarItem>
+                    {submenu.title}
+                  </MenubarItem>
+                </Link>
+              ))}
+            </MenubarContent>
+          </MenubarMenu>
+        )
+      })}
+    </Menubar>
   )
 }
-
-const ListItem = React.forwardRef<
-  React.ElementRef<"a">,
-  React.ComponentPropsWithoutRef<"a">
->(({ className, title, children, ...props }, ref) => {
-  return (
-    <li>
-      <NavigationMenuLink asChild>
-        <a
-          ref={ref}
-          className={cn(
-            "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
-            className
-          )}
-          {...props}
-        >
-          <div className="text-sm font-medium leading-none flex gap-1 items-center">
-            <ListOrdered />
-            {title}
-          </div>
-          <p>{children}</p>
-        </a>
-      </NavigationMenuLink>
-    </li>
-  )
-})
-ListItem.displayName = "ListItem"

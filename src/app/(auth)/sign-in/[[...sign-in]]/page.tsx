@@ -4,7 +4,7 @@ import React from 'react'
 
 function SignInPage() {
   return (
-    <div>
+    <div className='relative'>
       <div className='flex justify-center md:justify-start md:items-center h-screen md:grid md:grid-cols-2 md:px-0'>
         <div className='mx-auto p-5'>
           <SignIn />
