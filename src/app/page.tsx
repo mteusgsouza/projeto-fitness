@@ -79,7 +79,7 @@ export default async function Home() {
                   <ul>
                     {treinos?.map((treino) => (
                       <li key={treino.id}>
-                        {treino.label}
+                        <span className="capitalize mr-0.5">{treino.trainingDay}</span> - {treino.label}
                       </li>
                     ))}
                   </ul>

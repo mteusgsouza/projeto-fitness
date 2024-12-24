@@ -10,24 +10,47 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { PlusCircle, Save, Trash2 } from 'lucide-react'
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { zodResolver } from "@hookform/resolvers/zod";
-import { createTraining } from '@/actions/training/_actions'
+import { createTraining, updateTraining } from '@/actions/training/_actions'
 import { TrainingFormSchema, type FormTrainingType } from '@/actions/training/_schema'
+import type { Prisma } from '@prisma/client'
 
 const initialExercice = {
   label: '', reps: 0, sets: 0
 }
+type TTraining = {
+  label: string;
+  trainingDay: string;
+  trainingMenu: Prisma.TrainingMenuCreateManyTrainingInput[];
+}
 
-function FormTrining() {
+function FormTrining({ idTraining, initialData }: {
+  idTraining?: string
+  initialData?: TTraining
+}) {
+  const emptyData = {
+    label: '',
+    trainingDay: '',
+    trainingMenu: [initialExercice]
+  }
+  const _initialData = useMemo(() => {
+    if (!initialData) {
+      return emptyData as typeof emptyData
+    }
+    const menuExercises = initialData.trainingMenu.map((exercise) => ({
+      label: exercise.label,
+      reps: exercise.reps,
+      sets: exercise.sets,
+    }))
+    const _data: typeof emptyData = { label: initialData.label, trainingDay: initialData.trainingDay, trainingMenu: menuExercises }
+    return _data
+  }, [initialData])
+
   const form = useForm<FormTrainingType>({
     resolver: zodResolver(TrainingFormSchema, undefined, { raw: true }),
-    defaultValues: {
-      label: '',
-      trainingDay: '',
-      trainingMenu: [initialExercice]
-    }
+    defaultValues: _initialData
   })
 
   const { fields, append, remove } = useFieldArray({
@@ -36,13 +59,17 @@ function FormTrining() {
   });
 
   function onSubmit(data: FormTrainingType) {
-    createTraining(data)
+    if (idTraining) {
+      updateTraining(idTraining, data)
+    } else {
+      createTraining(data)
+    }
   }
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)}
-        className='flex flex-col gap-3 items-start'>
+        className='flex flex-col gap-3 items-start dark:[&_.text-destructive]:text-red-400'>
         <FormField
           control={form.control}
           name="label"
@@ -51,6 +78,7 @@ function FormTrining() {
               <FormLabel>Descrição</FormLabel>
               <Input
                 placeholder='ex: Membros inferiores' {...field}
+                className="bg-white dark:bg-zinc-700"
               />
               <FormMessage />
             </FormItem>
@@ -64,7 +92,7 @@ function FormTrining() {
               <FormItem>
                 <FormLabel>Dia da semana</FormLabel>
                 <Select onValueChange={field.onChange} defaultValue={field.value} {...form.register("trainingDay")} >
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-[180px] bg-white dark:bg-zinc-700">
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
@@ -85,7 +113,8 @@ function FormTrining() {
         <div className='flex flex-col gap-1'>
           <h4>Exercícios:</h4>
           {fields.map((_field, index) => (
-            <div key={index} className='my-2 border rounded-sm p-2'>
+            <div key={index}
+              className='my-2 border rounded-sm p-2 bg-white dark:bg-zinc-700'>
               <div className='flex justify-between items-center'>
                 <h6 className='uppercase text-xs font-bold tracking-wide'>
                   Exercício - {index + 1}
@@ -124,7 +153,7 @@ function FormTrining() {
                       </FormLabel>
                       <Input type='number'
                         {...form.register(`trainingMenu.${index}.reps`)}
-                        defaultValue={_field.reps}
+                        defaultValue={_field.reps.toString()}
                       />
                       <FormMessage />
                     </FormItem>
@@ -139,7 +168,7 @@ function FormTrining() {
                       </FormLabel>
                       <Input type='number'
                         {...form.register(`trainingMenu.${index}.sets`)}
-                        defaultValue={_field.sets}
+                        defaultValue={_field.sets.toString()}
                       />
                       <FormMessage />
                     </FormItem>
@@ -154,11 +183,10 @@ function FormTrining() {
             append({
               ...initialExercice
             })}
-          className='bg-indigo-500 !text-white hover:bg-indigo-600 mx-auto'>
+          className='bg-indigo-500 !text-white hover:bg-indigo-600 active:bg-indigo-600 mx-auto'>
           <PlusCircle /> Adicionar Exercício
         </Button>
-
-        <Button type='submit'>
+        <Button type='submit' className='mt-3'>
           <Save /> CADASTRAR TREINO
         </Button>
       </form>

@@ -1,3 +1,4 @@
+
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardTitle, CardHeader } from '@/components/ui/card'
 import prisma from '@/lib/db'
@@ -5,6 +6,7 @@ import { currentUser } from '@clerk/nextjs/server'
 import { Edit, PlusCircle, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import React from 'react'
+import DeleteTrainingButton from './delete-dialog'
 
 async function TrainingPage() {
   const user = await currentUser()
@@ -33,18 +35,20 @@ async function TrainingPage() {
           <Card key={treino.id}>
             <CardHeader className='p-3'>
               <CardTitle className='flex items-center'>
-                <span className='uppercase mr-0.5'>{treino.trainingDay}</span> - {treino.label}
+                <span className='capitalize mr-0.5'>
+                  {treino.trainingDay.includes('terca') ? 'Terça' : treino.trainingDay}
+                </span> - {treino.label}
                 <div className='flex gap-2 ml-auto'>
-                  <Button size="icon" className='bg-emerald-500/20 text-emerald-500 hover:bg-emerald-500/30 h-7 w-7 shadow-none'>
-                    <Edit />
-                  </Button>
-                  <Button size="icon" className='bg-red-500/20 text-red-500 hover:bg-red-500/30 h-7 w-7 shadow-none'>
-                    <Trash2 />
-                  </Button>
+                  <Link href={`/training/update/${treino.id}`} passHref>
+                    <Button size="icon" className='bg-emerald-500/20 text-emerald-500 hover:bg-emerald-500/30 h-7 w-7 shadow-none'>
+                      <Edit />
+                    </Button>
+                  </Link>
+                  <DeleteTrainingButton idTreino={treino.id} />
                 </div>
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className='px-2'>
               {treino.trainingMenu.map((menu) => (
                 <div key={menu.id} className='border-b px-1 py-2 flex justify-between items-center'>
                   <p className='col-span-3'>{menu.label}</p>

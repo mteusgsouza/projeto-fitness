@@ -3,10 +3,11 @@
 import { currentUser } from "@clerk/nextjs/server"
 import type { FormTrainingType } from "./_schema"
 import prisma from "@/lib/db"
+import { revalidatePath } from "next/cache"
+import { redirect } from "next/navigation"
 
 export async function createTraining(formData: FormTrainingType) {
   console.log(formData)
-
   const user = await currentUser()
   if (!user) return
 
@@ -28,4 +29,36 @@ export async function createTraining(formData: FormTrainingType) {
       }
     }
   })
+  redirect('/training')
+}
+
+export async function updateTraining(id: string, formData: FormTrainingType) {
+
+  const menuExercises = formData.trainingMenu.map((exercise) => ({
+    ...exercise,
+    reps: Number(exercise.reps),
+    sets: Number(exercise.sets)
+  }))
+
+  await prisma.training.update({
+    where: { id: id },
+    data: {
+      label: formData.label,
+      trainingDay: formData.trainingDay,
+      trainingMenu: {
+        deleteMany: {},
+        createMany: {
+          data: menuExercises
+        }
+      }
+    }
+  })
+  redirect('/training')
+}
+
+export async function deleteTraining(id: string) {
+  await prisma.training.delete({
+    where: { id }
+  })
+  revalidatePath('/training')
 }

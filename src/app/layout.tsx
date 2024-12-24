@@ -7,6 +7,7 @@ import {
 } from '@clerk/nextjs'
 import { ptBR } from '@clerk/localizations'
 import UserProvider from "./user-provider";
+import { Toaster } from "@/components/ui/sonner"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,7 +35,7 @@ export default function RootLayout({
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
-          <div className="bg-gradient-to-br from-teal-50 to-teal-600 fixed -z-10 h-full w-full dark:from-black dark:to-emerald-700"></div>
+          <div className="bg-gradient-to-r from-teal-300 to-emerald-500 fixed -z-10 h-full w-full dark:from-black dark:to-emerald-700"></div>
           <UserProvider>
             <ThemeProvider
               attribute="class"
@@ -43,6 +44,7 @@ export default function RootLayout({
               disableTransitionOnChange
             >
               {children}
+              <Toaster />
             </ThemeProvider>
           </UserProvider>
         </body>
