@@ -10,7 +10,7 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { PlusCircle, Save, Trash2 } from 'lucide-react'
-import React, { useMemo } from 'react'
+import React from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createTraining, updateTraining } from '@/actions/training/_actions'
