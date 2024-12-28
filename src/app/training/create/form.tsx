@@ -35,18 +35,16 @@ function FormTrining({ idTraining, initialData }: {
     trainingDay: '',
     trainingMenu: [initialExercice]
   }
-  const _initialData = useMemo(() => {
-    if (!initialData) {
-      return emptyData as typeof emptyData
-    }
+  let _initialData = emptyData
+
+  if (initialData) {
     const menuExercises = initialData.trainingMenu.map((exercise) => ({
       label: exercise.label,
       reps: exercise.reps,
       sets: exercise.sets,
     }))
-    const _data: typeof emptyData = { label: initialData.label, trainingDay: initialData.trainingDay, trainingMenu: menuExercises }
-    return _data
-  }, [initialData])
+    _initialData = { label: initialData.label, trainingDay: initialData.trainingDay, trainingMenu: menuExercises }
+  }
 
   const form = useForm<FormTrainingType>({
     resolver: zodResolver(TrainingFormSchema, undefined, { raw: true }),
@@ -130,7 +128,7 @@ function FormTrining({ idTraining, initialData }: {
                 <div className='col-span-3'>
                   <FormField control={form.control}
                     name={`trainingMenu.${index}.label`}
-                    render={({ field }) => (
+                    render={() => (
                       <FormItem>
                         <FormLabel className='text-[0.625rem] tracking-wide'>
                           Descrição
@@ -146,7 +144,7 @@ function FormTrining({ idTraining, initialData }: {
                 </div>
                 <FormField control={form.control}
                   name={`trainingMenu.${index}.reps`}
-                  render={({ field }) => (
+                  render={() => (
                     <FormItem>
                       <FormLabel className='text-[0.625rem] tracking-wide'>
                         Repetições
@@ -161,7 +159,7 @@ function FormTrining({ idTraining, initialData }: {
                 />
                 <FormField control={form.control}
                   name={`trainingMenu.${index}.sets`}
-                  render={({ field }) => (
+                  render={() => (
                     <FormItem>
                       <FormLabel className='text-[0.625rem] tracking-wide'>
                         Séries

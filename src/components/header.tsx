@@ -4,7 +4,6 @@ import { SignedIn, SignedOut, UserButton } from '@clerk/nextjs'
 import { Button } from './ui/button'
 import Link from 'next/link'
 import { ModeToggle } from './mode-toggle'
-import { ArrowLeft } from 'lucide-react'
 import GoBackButton from './go-back-button'
 
 function Header() {

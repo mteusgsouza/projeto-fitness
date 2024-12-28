@@ -53,7 +53,7 @@ export default function HeaderNavigationMenu() {
 
   return (
     <Menubar className="border-0 shadow-none bg-transparent">
-      {menus.map((menu, key) => {
+      {menus.map((menu) => {
         if (!menu.submenu) {
           return (
             <MenubarMenu key={menu.title}>

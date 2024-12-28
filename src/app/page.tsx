@@ -1,6 +1,5 @@
 import MainLayout from "@/components/main-layout";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import prisma from "@/lib/db";
 import { SignedIn } from "@clerk/nextjs";
