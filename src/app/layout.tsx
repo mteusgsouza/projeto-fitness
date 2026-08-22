@@ -35,7 +35,7 @@ export default function RootLayout({
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
-          <div className="bg-gradient-to-r from-teal-300 to-emerald-500 fixed -z-10 h-full w-full dark:from-black dark:to-emerald-700"></div>
+          <div className="bg-gradient-to-r from-teal-300 to-blue-500 fixed -z-10 h-full w-full dark:from-black dark:to-emerald-700"></div>
           <UserProvider>
             <ThemeProvider
               attribute="class"
