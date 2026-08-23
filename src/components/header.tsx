@@ -1,5 +1,6 @@
 import React from 'react'
 import Link from 'next/link'
+import { Settings } from 'lucide-react'
 import { UserButton } from '@clerk/nextjs'
 import { auth } from '@clerk/nextjs/server'
 import HeaderNavigationMenu from './navgation-menu'
@@ -25,7 +26,14 @@ async function Header() {
         <div className='ml-auto flex items-center gap-1'>
           <ModeToggle />
           {userId ? (
-            <UserButton />
+            <>
+              <Link href='/settings' passHref>
+                <Button variant='ghost' size='icon' className='size-9' aria-label='Configurações'>
+                  <Settings className='size-[1.15rem]' />
+                </Button>
+              </Link>
+              <UserButton />
+            </>
           ) : (
             <Link href='/sign-in' passHref>
               <Button size='sm'>Entrar</Button>

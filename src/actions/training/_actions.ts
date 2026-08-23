@@ -5,6 +5,7 @@ import type { FormTrainingType } from "./_schema"
 import prisma from "@/lib/db"
 import { revalidatePath } from "next/cache"
 import { trainingDayLabel } from "@/lib/training-day"
+import { ensureUser } from "@/lib/user"
 
 type ActionResult = { ok: boolean; message: string }
 
@@ -36,7 +37,8 @@ function revalidateAll() {
 }
 
 export async function createTraining(formData: FormTrainingType): Promise<ActionResult> {
-  const user = await currentUser()
+  // Escrita: precisa da linha User por causa da foreign key
+  const user = await ensureUser()
   if (!user) return { ok: false, message: 'Usuário não autenticado' }
 
   // Um treino por dia da semana: checa antes para dar mensagem clara em vez de

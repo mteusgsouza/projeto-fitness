@@ -29,9 +29,6 @@
   --color-destructive: hsl(var(--destructive));
   --color-destructive-foreground: hsl(var(--destructive-foreground));
 
-  --color-success: hsl(var(--success));
-  --color-success-foreground: hsl(var(--success-foreground));
-
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
@@ -41,6 +38,8 @@
   --color-chart-3: hsl(var(--chart-3));
   --color-chart-4: hsl(var(--chart-4));
   --color-chart-5: hsl(var(--chart-5));
+
+  --color-grid: hsl(var(--grid));
 
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
@@ -64,70 +63,135 @@
 
 @layer base {
   /*
-    Paleta esmeralda: o app é de treino, e o verde carrega a leitura de
-    progresso/conclusão que a interface usa o tempo todo. Os cinzas têm um
-    leve viés de matiz (160/168) para não brigarem com o primário.
+    Direção "Telemetria": base verde-escura quase preta, superfícies em
+    degraus curtos e um acento de alta energia reservado a dado vivo.
+    O tema claro é a mesma leitura invertida — não uma paleta diferente.
+    O acento é trocável em /settings via [data-accent] mais abaixo.
   */
   :root {
-    --background: 160 20% 97%;
-    --foreground: 165 25% 11%;
+    --background: 160 20% 96%;
+    --foreground: 163 30% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 165 25% 11%;
+    --card-foreground: 163 30% 10%;
     --popover: 0 0% 100%;
-    --popover-foreground: 165 25% 11%;
-    --primary: 158 75% 30%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 160 16% 93%;
-    --secondary-foreground: 165 25% 15%;
-    --muted: 160 16% 93%;
-    --muted-foreground: 160 9% 42%;
-    --accent: 158 45% 90%;
-    --accent-foreground: 158 75% 22%;
-    --destructive: 0 72% 48%;
+    --popover-foreground: 163 30% 10%;
+    --secondary: 160 14% 92%;
+    --secondary-foreground: 163 30% 14%;
+    --muted: 160 14% 92%;
+    --muted-foreground: 160 10% 40%;
+    --destructive: 0 72% 45%;
     --destructive-foreground: 0 0% 100%;
-    --success: 158 75% 30%;
-    --success-foreground: 0 0% 100%;
-    --border: 160 14% 87%;
-    --input: 160 14% 85%;
-    --ring: 158 75% 34%;
+    --border: 160 14% 86%;
+    --input: 160 14% 84%;
+    --grid: 160 16% 90%;
 
-    --chart-1: 158 72% 36%;
-    --chart-2: 199 89% 44%;
-    --chart-3: 38 92% 48%;
-    --chart-4: 262 72% 56%;
-    --chart-5: 340 75% 50%;
+    --chart-2: 199 89% 40%;
+    --chart-3: 38 92% 42%;
+    --chart-4: 262 72% 52%;
+    --chart-5: 330 75% 46%;
 
-    --radius: 0.75rem;
+    --radius: 0.875rem;
   }
 
   .dark {
-    --background: 168 22% 6%;
-    --foreground: 160 12% 96%;
-    --card: 168 18% 10%;
-    --card-foreground: 160 12% 96%;
-    --popover: 168 18% 11%;
-    --popover-foreground: 160 12% 96%;
-    --primary: 158 64% 50%;
-    --primary-foreground: 168 40% 7%;
-    --secondary: 168 12% 16%;
-    --secondary-foreground: 160 12% 96%;
-    --muted: 168 12% 16%;
-    --muted-foreground: 160 8% 64%;
-    --accent: 168 14% 19%;
-    --accent-foreground: 158 64% 62%;
+    --background: 160 39% 5%;
+    --foreground: 158 32% 93%;
+    --card: 160 30% 8%;
+    --card-foreground: 158 32% 93%;
+    --popover: 160 30% 9%;
+    --popover-foreground: 158 32% 93%;
+    --secondary: 160 30% 12%;
+    --secondary-foreground: 158 32% 93%;
+    --muted: 160 30% 12%;
+    --muted-foreground: 160 12% 55%;
     --destructive: 0 68% 52%;
     --destructive-foreground: 0 0% 100%;
-    --success: 158 64% 50%;
-    --success-foreground: 168 40% 7%;
-    --border: 168 12% 20%;
-    --input: 168 12% 24%;
-    --ring: 158 64% 46%;
+    --border: 160 26% 16%;
+    --input: 160 26% 20%;
+    --grid: 160 28% 11%;
 
-    --chart-1: 158 64% 52%;
     --chart-2: 199 88% 58%;
     --chart-3: 38 94% 60%;
     --chart-4: 262 78% 70%;
-    --chart-5: 340 78% 64%;
+    --chart-5: 330 78% 64%;
+  }
+}
+
+@layer base {
+  /*
+    Acentos: um matiz, duas rampas de luminosidade. No escuro o acento é
+    claro e o texto sobre ele é escuro; no claro acontece o inverso — é o
+    que mantém contraste sem trocar de identidade.
+    O padrão (sem data-accent) é lima.
+  */
+  :root,
+  :root[data-accent='lima'] {
+    --primary: 84 72% 28%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 84 45% 88%;
+    --accent-foreground: 84 72% 22%;
+    --ring: 84 72% 32%;
+    --chart-1: 84 68% 32%;
+  }
+  .dark,
+  .dark[data-accent='lima'] {
+    --primary: 82 100% 62%;
+    --primary-foreground: 160 39% 5%;
+    --accent: 160 39% 18%;
+    --accent-foreground: 82 100% 68%;
+    --ring: 82 90% 50%;
+    --chart-1: 82 100% 62%;
+  }
+
+  :root[data-accent='ciano'] {
+    --primary: 195 92% 30%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 195 60% 90%;
+    --accent-foreground: 195 92% 22%;
+    --ring: 195 92% 34%;
+    --chart-1: 195 88% 34%;
+  }
+  .dark[data-accent='ciano'] {
+    --primary: 190 95% 58%;
+    --primary-foreground: 160 39% 5%;
+    --accent: 195 45% 18%;
+    --accent-foreground: 190 95% 66%;
+    --ring: 190 85% 48%;
+    --chart-1: 190 95% 58%;
+  }
+
+  :root[data-accent='ambar'] {
+    --primary: 30 90% 36%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 36 80% 90%;
+    --accent-foreground: 30 90% 26%;
+    --ring: 30 90% 40%;
+    --chart-1: 33 88% 40%;
+  }
+  .dark[data-accent='ambar'] {
+    --primary: 38 96% 60%;
+    --primary-foreground: 160 39% 5%;
+    --accent: 36 45% 18%;
+    --accent-foreground: 38 96% 68%;
+    --ring: 38 88% 50%;
+    --chart-1: 38 96% 60%;
+  }
+
+  :root[data-accent='magenta'] {
+    --primary: 330 74% 38%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 330 60% 92%;
+    --accent-foreground: 330 74% 28%;
+    --ring: 330 74% 42%;
+    --chart-1: 330 72% 42%;
+  }
+  .dark[data-accent='magenta'] {
+    --primary: 330 90% 66%;
+    --primary-foreground: 160 39% 5%;
+    --accent: 330 40% 20%;
+    --accent-foreground: 330 90% 74%;
+    --ring: 330 82% 56%;
+    --chart-1: 330 90% 66%;
   }
 }
 
@@ -156,12 +220,32 @@
 }
 
 @layer utilities {
+  /* Números de carga/reps: monoespaçada e alinhada em coluna */
+  .tabular {
+    font-family: var(--font-geist-mono), ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Rótulo técnico: caixa alta, pequeno, espaçado */
+  .label-tec {
+    font-size: 0.625rem;
+    line-height: 1rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+
+  /* Malha de fundo que dá a leitura de instrumento */
+  .grid-tec {
+    background-image:
+      linear-gradient(hsl(var(--grid)) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--grid)) 1px, transparent 1px);
+    background-size: 26px 26px;
+  }
+
   /* Área segura do notch / gesture bar do iOS */
   .pb-safe {
     padding-bottom: env(safe-area-inset-bottom);
-  }
-  .h-safe-nav {
-    height: calc(4rem + env(safe-area-inset-bottom));
   }
 }
 

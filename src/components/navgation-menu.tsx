@@ -3,14 +3,15 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BicepsFlexed, ClipboardList, House, Play } from "lucide-react"
+import { BicepsFlexed, ClipboardList, House, LayoutList, Play } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const menus = [
   { title: "Início", href: "/", Icon: House },
   { title: "Treinos", href: "/training", Icon: BicepsFlexed },
-  { title: "Histórico", href: "/history", Icon: ClipboardList },
   { title: "Treinar", href: "/history/create", Icon: Play },
+  { title: "Histórico", href: "/history", Icon: ClipboardList },
+  { title: "Exercícios", href: "/exercises", Icon: LayoutList },
 ]
 
 function isActive(pathname: string, href: string) {

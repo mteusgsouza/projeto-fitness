@@ -46,7 +46,7 @@ async function StartWorkoutPage() {
           </Alert>
         </Link>
       ) : (
-        <div className='space-y-2'>
+        <div className='grid gap-3'>
           {ready.map((training) => (
             <Link key={training.id} href={`/workout/${training.id}`}>
               <Card className='transition-colors hover:bg-muted active:bg-muted'>

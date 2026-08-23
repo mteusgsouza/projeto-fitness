@@ -8,6 +8,7 @@ import { trainingDayLabel } from '@/lib/training-day'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import WorkoutForm, { type WorkoutExercise } from './form'
+import WorkoutExitButton from '../exit-button'
 
 async function WorkoutPage({
   params,
@@ -79,14 +80,17 @@ async function WorkoutPage({
 
   return (
     <div className='container mx-auto px-4 py-4 md:px-6 md:py-6 space-y-4'>
-      <div>
-        <Badge variant='secondary' className='mb-1 capitalize'>
-          {trainingDayLabel(training.trainingDay)}
-        </Badge>
-        <h1 className='text-2xl font-semibold tracking-tight'>{training.label}</h1>
-        <p className='text-sm text-muted-foreground'>
-          Ajuste cada série conforme o que você realmente fez.
-        </p>
+      <div className='flex items-start gap-2'>
+        <WorkoutExitButton />
+        <div className='min-w-0'>
+          <Badge variant='secondary' className='mb-1 capitalize'>
+            {trainingDayLabel(training.trainingDay)}
+          </Badge>
+          <h1 className='text-2xl font-semibold tracking-tight'>{training.label}</h1>
+          <p className='text-sm text-muted-foreground'>
+            Ajuste cada série conforme o que você realmente fez.
+          </p>
+        </div>
       </div>
 
       {!exercises.length ? (

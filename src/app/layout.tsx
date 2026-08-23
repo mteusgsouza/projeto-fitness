@@ -4,8 +4,8 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ClerkProvider } from '@clerk/nextjs'
 import { ptBR } from '@clerk/localizations'
-import UserProvider from "./user-provider";
 import { Toaster } from "@/components/ui/sonner"
+import { ACCENT_INIT_SCRIPT } from "@/hooks/use-accent";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,8 +28,8 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "hsl(160 20% 97%)" },
-    { media: "(prefers-color-scheme: dark)", color: "hsl(168 22% 6%)" },
+    { media: "(prefers-color-scheme: light)", color: "hsl(160 20% 96%)" },
+    { media: "(prefers-color-scheme: dark)", color: "hsl(160 39% 5%)" },
   ],
 };
 
@@ -41,18 +41,19 @@ export default function RootLayout({
   return (
     <ClerkProvider localization={ptBR}>
       <html lang="pt-br" suppressHydrationWarning>
+        <head>
+          <script dangerouslySetInnerHTML={{ __html: ACCENT_INIT_SCRIPT }} />
+        </head>
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
           <ThemeProvider
             attribute="class"
-            defaultTheme="system"
+            defaultTheme="dark"
             enableSystem
             disableTransitionOnChange
           >
-            <UserProvider>
-              {children}
-            </UserProvider>
+            {children}
             <Toaster position="top-center" />
           </ThemeProvider>
         </body>

@@ -240,9 +240,10 @@ function WorkoutForm({ trainingId, exercises }: {
         </CardContent>
       </Card>
 
-      {/* Fixa acima da barra de navegação: finalizar não pode exigir rolar
-          até o fim de uma lista longa de exercícios. */}
-      <div className='sticky bottom-20 md:bottom-4 z-30 pt-2'>
+      {/* Fixa no rodapé: finalizar não pode exigir rolar até o fim de uma
+          lista longa. A tela de execução é modo foco e não tem barra
+          inferior, então não há folga a reservar. */}
+      <div className='sticky bottom-4 z-30 pt-2'>
         <Button type='submit' size='lg' disabled={isPending}
           className='w-full shadow-lg shadow-primary/20'>
           <Check className='size-5' />

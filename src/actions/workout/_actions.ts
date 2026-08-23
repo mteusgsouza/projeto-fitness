@@ -2,6 +2,7 @@
 
 import { currentUser } from '@clerk/nextjs/server'
 import prisma from '@/lib/db'
+import { ensureUser } from '@/lib/user'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 
@@ -26,7 +27,8 @@ const SessionSchema = z.object({
 export type SessionInput = z.infer<typeof SessionSchema>
 
 export async function createWorkoutSession(input: SessionInput): Promise<ActionResult> {
-  const user = await currentUser()
+  // Escrita: precisa da linha User por causa da foreign key
+  const user = await ensureUser()
   if (!user) return { ok: false, message: 'Usuário não autenticado' }
 
   const parsed = SessionSchema.safeParse(input)

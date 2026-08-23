@@ -14,6 +14,8 @@ const TITLES: { match: (path: string) => boolean; title: string }[] = [
   { match: (p) => p === '/history/create', title: 'Treinar' },
   { match: (p) => p.startsWith('/history/'), title: 'Sessão' },
   { match: (p) => p.startsWith('/workout/'), title: 'Treino em andamento' },
+  { match: (p) => p === '/exercises', title: 'Exercícios' },
+  { match: (p) => p === '/settings', title: 'Configurações' },
 ]
 
 function titleFor(pathname: string) {
