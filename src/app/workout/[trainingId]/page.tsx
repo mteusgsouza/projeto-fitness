@@ -6,6 +6,7 @@ import { AlertCircle } from 'lucide-react'
 import prisma from '@/lib/db'
 import { trainingDayLabel } from '@/lib/training-day'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
 import WorkoutForm, { type WorkoutExercise } from './form'
 
 async function WorkoutPage({
@@ -77,14 +78,16 @@ async function WorkoutPage({
   })
 
   return (
-    <div className='container mx-auto px-4 md:p-6'>
-      <h1 className='text-xl md:text-2xl font-medium'>
-        <span className='capitalize'>{trainingDayLabel(training.trainingDay)}</span>
-        {' - '}{training.label}
-      </h1>
-      <p className='text-sm text-muted-foreground mb-3'>
-        Ajuste cada série conforme o que você realmente fez.
-      </p>
+    <div className='container mx-auto px-4 py-4 md:px-6 md:py-6 space-y-4'>
+      <div>
+        <Badge variant='secondary' className='mb-1 capitalize'>
+          {trainingDayLabel(training.trainingDay)}
+        </Badge>
+        <h1 className='text-2xl font-semibold tracking-tight'>{training.label}</h1>
+        <p className='text-sm text-muted-foreground'>
+          Ajuste cada série conforme o que você realmente fez.
+        </p>
+      </div>
 
       {!exercises.length ? (
         <Link href={`/training/update/${training.id}`}>

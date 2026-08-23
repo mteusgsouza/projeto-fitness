@@ -1,37 +1,65 @@
-import { Button } from '@/components/ui/button'
-import {
-  BicepsFlexed,
-  ClipboardList,
-  Home,
-} from 'lucide-react'
+'use client'
+
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { BicepsFlexed, ClipboardList, House, Play } from 'lucide-react'
 import React from 'react'
+import { cn } from '@/lib/utils'
 
 const items = [
-  { href: '/', label: 'INÍCIO', Icon: Home },
-  { href: '/training', label: 'TREINOS', Icon: BicepsFlexed },
-  { href: '/history', label: 'HISTÓRICO', Icon: ClipboardList },
+  { href: '/', label: 'Início', Icon: House },
+  { href: '/training', label: 'Treinos', Icon: BicepsFlexed },
+  { href: '/history', label: 'Histórico', Icon: ClipboardList },
 ]
 
+function isActive(pathname: string, href: string) {
+  if (href === '/') return pathname === '/'
+  return pathname === href || pathname.startsWith(`${href}/`)
+}
+
 function BottomNavbar() {
+  const pathname = usePathname()
+
   return (
-    <div className="md:hidden">
-      <div className="mt-16" />
-      <div className="fixed bottom-0 left-0 right-0 h-16 bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 ">
-        <div className="flex items-center">
-          {items.map(({ href, label, Icon }) => (
-            <Link key={href} href={href} passHref className="flex-1">
-              <Button className="h-16 w-full flex-col gap-1.5 rounded-none bg-transparent shadow-none hover:bg-white/10 active:bg-white/10 [&_svg]:size-5">
-                <Icon />
-                <span className="text-[0.625rem] leading-none tracking-wide">
-                  {label}
-                </span>
-              </Button>
-            </Link>
-          ))}
+    <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-border bg-card/90 backdrop-blur-lg pb-safe">
+      <div className="grid grid-cols-4 items-end h-16">
+        {items.slice(0, 2).map(({ href, label, Icon }) => (
+          <NavItem key={href} href={href} label={label} Icon={Icon}
+            active={isActive(pathname, href)} />
+        ))}
+
+        {/* Ação principal em destaque: chegar ao registro de treino em um toque */}
+        <div className="flex justify-center">
+          <Link href="/history/create" aria-label="Iniciar treino"
+            className="-mt-6 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 ring-4 ring-card active:scale-95 transition-transform">
+            <Play className="size-6 fill-current" />
+          </Link>
         </div>
+
+        {items.slice(2).map(({ href, label, Icon }) => (
+          <NavItem key={href} href={href} label={label} Icon={Icon}
+            active={isActive(pathname, href)} />
+        ))}
       </div>
-    </div>
+    </nav>
+  )
+}
+
+function NavItem({ href, label, Icon, active }: {
+  href: string
+  label: string
+  Icon: React.ComponentType<{ className?: string }>
+  active: boolean
+}) {
+  return (
+    <Link href={href} aria-current={active ? 'page' : undefined}
+      className={cn(
+        'flex h-16 flex-col items-center justify-center gap-1 text-[0.6875rem] font-medium transition-colors',
+        active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+      )}>
+      <Icon className={cn('size-5', active && 'scale-110 transition-transform')} />
+      {label}
+    </Link>
   )
 }
 

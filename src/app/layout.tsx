@@ -1,10 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
-import {
-  ClerkProvider,
-} from '@clerk/nextjs'
+import { ClerkProvider } from '@clerk/nextjs'
 import { ptBR } from '@clerk/localizations'
 import UserProvider from "./user-provider";
 import { Toaster } from "@/components/ui/sonner"
@@ -21,7 +19,18 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Projeto Fitness",
-  description: "Projeto Fitness - Controle de treino",
+  description: "Monte seus treinos, registre cada série e acompanhe sua evolução",
+};
+
+// viewportFit: 'cover' é o que libera env(safe-area-inset-*) usado pela barra inferior
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "hsl(160 20% 97%)" },
+    { media: "(prefers-color-scheme: dark)", color: "hsl(168 22% 6%)" },
+  ],
 };
 
 export default function RootLayout({
@@ -31,22 +40,21 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider localization={ptBR}>
-      <html lang="pt-br">
+      <html lang="pt-br" suppressHydrationWarning>
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
-          <div className="bg-gradient-to-r from-teal-300 to-blue-500 fixed -z-10 h-full w-full dark:from-black dark:to-emerald-700"></div>
-          <UserProvider>
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="light"
-              enableSystem
-              disableTransitionOnChange
-            >
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <UserProvider>
               {children}
-              <Toaster />
-            </ThemeProvider>
-          </UserProvider>
+            </UserProvider>
+            <Toaster position="top-center" />
+          </ThemeProvider>
         </body>
       </html>
     </ClerkProvider>

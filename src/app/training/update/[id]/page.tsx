@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { currentUser } from '@clerk/nextjs/server'
 import FormTrining from '../../create/form'
 import prisma from '@/lib/db'
+import PageHeader from '@/components/page-header'
 
 async function UpdatePage({
   params,
@@ -32,8 +33,8 @@ async function UpdatePage({
   ])
 
   return (
-    <div className='container mx-auto px-4 md:p-6'>
-      <h1 className='text-xl md:text-2xl font-medium mb-3'>Atualizar Treino:</h1>
+    <div className='container mx-auto px-4 py-4 md:px-6 md:py-6 space-y-4'>
+      <PageHeader title='Editar ficha' description={treino.label} />
       <FormTrining
         idTraining={id}
         exercises={exercises}

@@ -4,11 +4,11 @@ import TreinosCard from "@/components/treinos";
 import { FrequencyChart, VolumeChart } from "@/components/charts/weekly-charts";
 import ExerciseProgressChart from "@/components/charts/exercise-progress";
 import { getExerciseProgress, getTrackedExercises, getWeeklyStats } from "@/actions/stats/_actions";
-import { SignedIn } from "@clerk/nextjs";
 import { currentUser } from "@clerk/nextjs/server";
 
 export default async function Home() {
   const user = await currentUser()
+  if (!user) return null
 
   const [weekly, trackedExercises] = await Promise.all([
     getWeeklyStats(12),
@@ -21,34 +21,37 @@ export default async function Home() {
     ? await getExerciseProgress(firstExercise.id)
     : []
 
+  const firstName = user.firstName?.trim() || user.fullName || ''
+
   return (
     <MainLayout>
-      <div className="container mx-auto px-4 md:p-6">
-        <h1 className="text-xl md:text-2xl">
-          Bem vindo, {user?.fullName}
-        </h1>
-        <div className="mt-8">
-          <SignedIn>
-            {hasSessions && (
-              <div className="grid gap-3 md:grid-cols-2 mb-3">
-                <FrequencyChart data={weekly} />
-                <VolumeChart data={weekly} />
-                {firstExercise && (
-                  <div className="md:col-span-2">
-                    <ExerciseProgressChart
-                      exercises={trackedExercises}
-                      initialExerciseId={firstExercise.id}
-                      initialData={initialProgress}
-                    />
-                  </div>
-                )}
+      <div className="container mx-auto px-4 py-4 md:px-6 md:py-6 space-y-4">
+        <div>
+          <p className="text-sm text-muted-foreground">Bem-vindo de volta</p>
+          <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
+            {firstName}
+          </h1>
+        </div>
+
+        {hasSessions && (
+          <div className="grid gap-4 md:grid-cols-2">
+            <FrequencyChart data={weekly} />
+            <VolumeChart data={weekly} />
+            {firstExercise && (
+              <div className="md:col-span-2">
+                <ExerciseProgressChart
+                  exercises={trackedExercises}
+                  initialExerciseId={firstExercise.id}
+                  initialData={initialProgress}
+                />
               </div>
             )}
-            <div className="grid md:grid-cols-2 gap-3">
-              <HistoricosCard />
-              <TreinosCard />
-            </div>
-          </SignedIn>
+          </div>
+        )}
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <HistoricosCard />
+          <TreinosCard />
         </div>
       </div>
     </MainLayout>

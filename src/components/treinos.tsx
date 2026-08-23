@@ -1,7 +1,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { currentUser } from '@clerk/nextjs/server'
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, ChevronRight } from 'lucide-react'
 import prisma from '@/lib/db'
 import { trainingDayLabel } from '@/lib/training-day'
 import { Alert, AlertDescription, AlertTitle } from './ui/alert'
@@ -14,17 +14,22 @@ async function TreinosCard() {
   const treinos = await prisma.training.findMany({
     where: { userId: user.id },
     orderBy: { createdAt: 'asc' },
-    select: { id: true, label: true, trainingDay: true },
+    select: {
+      id: true,
+      label: true,
+      trainingDay: true,
+      _count: { select: { exercises: true } },
+    },
   })
 
   if (!treinos.length) {
     return (
-      <Link href="/training/create">
-        <Alert className="cursor-pointer hover:bg-muted h-full">
-          <AlertCircle className="w-4 h-4" />
+      <Link href='/training/create'>
+        <Alert className='h-full cursor-pointer transition-colors hover:bg-muted'>
+          <AlertCircle className='size-4' />
           <AlertTitle>Nenhum treino cadastrado</AlertTitle>
           <AlertDescription>
-            Clique aqui para montar sua primeira ficha de treino.
+            Monte sua primeira ficha de treino.
           </AlertDescription>
         </Alert>
       </Link>
@@ -33,21 +38,33 @@ async function TreinosCard() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Treinos</CardTitle>
+      <CardHeader className='pb-2'>
+        <CardTitle className='text-sm font-medium text-muted-foreground'>
+          Minhas fichas
+        </CardTitle>
       </CardHeader>
-      <CardContent>
-        <ul className='flex flex-col gap-1'>
+      <CardContent className='pb-3'>
+        <ul className='divide-y divide-border'>
           {treinos.map((treino) => (
             <li key={treino.id}>
-              <Link href="/training" className='hover:underline underline-offset-2'>
-                <span className="capitalize mr-0.5">
-                  {trainingDayLabel(treino.trainingDay)}
-                </span> - {treino.label}
+              <Link href={`/workout/${treino.id}`}
+                className='flex items-center gap-3 py-2.5 transition-colors hover:text-primary'>
+                <span className='w-16 shrink-0 text-xs font-medium uppercase tracking-wide text-muted-foreground'>
+                  {trainingDayLabel(treino.trainingDay).slice(0, 3)}
+                </span>
+                <span className='min-w-0 flex-1 truncate text-sm'>{treino.label}</span>
+                <span className='shrink-0 text-xs tabular text-muted-foreground'>
+                  {treino._count.exercises}
+                </span>
+                <ChevronRight className='size-4 shrink-0 text-muted-foreground' />
               </Link>
             </li>
           ))}
         </ul>
+        <Link href='/training'
+          className='mt-3 inline-block text-sm underline underline-offset-2'>
+          Gerenciar treinos
+        </Link>
       </CardContent>
     </Card>
   )

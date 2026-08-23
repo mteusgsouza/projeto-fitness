@@ -1,13 +1,14 @@
 import React from 'react'
 import Link from 'next/link'
 import { format } from 'date-fns'
-import { ChevronRight, ClipboardList, Dumbbell } from 'lucide-react'
+import { ChevronRight, ClipboardList, Play } from 'lucide-react'
 import { currentUser } from '@clerk/nextjs/server'
 import prisma from '@/lib/db'
 import { formatSessionDate, formatVolume, totalVolume } from '@/lib/workout'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import PageHeader from '@/components/page-header'
 import DeleteHistoryButton from './delete-history-button'
 
 async function HistoricoPage() {
@@ -26,65 +27,62 @@ async function HistoricoPage() {
   })
 
   return (
-    <div className='container mx-auto px-4 md:p-6'>
-      <div className='flex items-center justify-between mb-3'>
-        <h1 className='text-2xl font-medium'>Histórico</h1>
-        <Link href="/history/create" className='hidden md:block'>
-          <Button size="sm">
-            <Dumbbell /> Treinar
-          </Button>
-        </Link>
-      </div>
+    <div className='container mx-auto px-4 py-4 md:px-6 md:py-6 space-y-4'>
+      <PageHeader
+        title='Histórico'
+        description={`${sessions.length} ${sessions.length === 1 ? 'sessão' : 'sessões'}`}
+        action={
+          <Link href='/history/create' passHref>
+            <Button size='sm'>
+              <Play className='size-4 fill-current' /> Treinar
+            </Button>
+          </Link>
+        }
+      />
 
       {!sessions.length ? (
         <Alert>
-          <ClipboardList className="w-4 h-4" />
+          <ClipboardList className='size-4' />
           <AlertTitle>Nenhum treino registrado ainda</AlertTitle>
           <AlertDescription>
             Inicie um treino na{' '}
-            <Link href="/training" className='underline underline-offset-2'>
+            <Link href='/training' className='underline underline-offset-2'>
               lista de treinos
             </Link>{' '}
             e registre suas séries — elas aparecem aqui.
           </AlertDescription>
         </Alert>
       ) : (
-        <div className='flex flex-col gap-2'>
+        <div className='space-y-2'>
           {sessions.map((session) => {
             const exerciseCount = new Set(session.setLogs.map((log) => log.exerciseId)).size
             return (
-              <Card key={session.id}>
-                <CardContent className='p-3 flex items-center gap-3'>
-                  <Link href={`/history/${session.id}`} className='min-w-0 flex-1 group'>
-                    <p className='font-medium truncate group-hover:underline underline-offset-2'>
-                      {session.trainingLabel}
-                    </p>
-                    <p className='text-sm text-muted-foreground'>
-                      {formatSessionDate(session.performedAt)} às{' '}
-                      {format(session.performedAt, 'HH:mm')}
-                    </p>
-                    <p className='text-sm text-muted-foreground'>
-                      {exerciseCount} {exerciseCount === 1 ? 'exercício' : 'exercícios'}
-                      {' · '}{session.setLogs.length} {session.setLogs.length === 1 ? 'série' : 'séries'}
-                      {' · '}{formatVolume(totalVolume(session.setLogs))}
-                    </p>
+              <Card key={session.id} className='overflow-hidden'>
+                <CardContent className='flex items-center gap-1 p-0'>
+                  <Link href={`/history/${session.id}`}
+                    className='flex min-w-0 flex-1 items-center gap-3 p-3 transition-colors hover:bg-muted active:bg-muted'>
+                    <div className='min-w-0 flex-1'>
+                      <p className='truncate font-medium'>{session.trainingLabel}</p>
+                      <p className='text-sm text-muted-foreground'>
+                        {formatSessionDate(session.performedAt)} · {format(session.performedAt, 'HH:mm')}
+                      </p>
+                      <p className='text-sm text-muted-foreground tabular'>
+                        {exerciseCount} {exerciseCount === 1 ? 'exercício' : 'exercícios'}
+                        {' · '}{session.setLogs.length} {session.setLogs.length === 1 ? 'série' : 'séries'}
+                        {' · '}{formatVolume(totalVolume(session.setLogs))}
+                      </p>
+                    </div>
+                    <ChevronRight className='size-4 shrink-0 text-muted-foreground' />
                   </Link>
-                  <Link href={`/history/${session.id}`} aria-label='Ver detalhes da sessão'>
-                    <ChevronRight className='w-4 h-4 text-muted-foreground' />
-                  </Link>
-                  <DeleteHistoryButton id={session.id} />
+                  <div className='pr-2'>
+                    <DeleteHistoryButton id={session.id} />
+                  </div>
                 </CardContent>
               </Card>
             )
           })}
         </div>
       )}
-
-      <Link href="/history/create" className='md:hidden'>
-        <Button size="lg" className='w-full my-3 uppercase'>
-          <Dumbbell /> Treinar
-        </Button>
-      </Link>
     </div>
   )
 }

@@ -11,11 +11,11 @@ Construído com Next.js (App Router), autenticação via Clerk e persistência e
 ### Autenticação
 - Cadastro e login via **Clerk**, com telas em `/sign-in` e `/sign-up` e interface traduzida para português (`@clerk/localizations`).
 - Menu de conta (`UserButton`) no cabeçalho, com logout e gerenciamento de perfil.
-- As rotas `/`, `/training/*`, `/history/*` e `/workout/*` são protegidas pelo middleware.
+- As rotas `/`, `/training/*`, `/history/*` e `/workout/*` são protegidas no `proxy.ts`.
 - Na primeira visita, o usuário do Clerk é espelhado na tabela `User` via upsert.
 
 ### Catálogo de exercícios
-- **63 exercícios pré-cadastrados** pelo seed, divididos em 8 grupos musculares (peito, costas, pernas, ombros, bíceps, tríceps, core, cardio), cada um com equipamento e nível (iniciante/intermediário/avançado).
+- **88 exercícios pré-cadastrados** pelo seed, em 10 grupos musculares (peito, costas, pernas, glúteos, ombros, bíceps, tríceps, antebraço, core, cardio), cada um com equipamento e nível (iniciante/intermediário/avançado).
 - O catálogo é global (`userId` nulo); a mesma tabela aceita exercícios personalizados por usuário.
 - É o que torna a comparação de evolução possível: "Rosca direta" é sempre a mesma entidade, em vez de texto livre digitado de formas diferentes.
 
@@ -43,8 +43,10 @@ Construído com Next.js (App Router), autenticação via Clerk e persistência e
 - **Progressão por exercício**: carga máxima ao longo do tempo, com seletor de exercício, recorde e variação desde o primeiro registro.
 
 ### Interface
-- **Tema claro/escuro** com detecção da preferência do sistema (`next-themes`).
-- **Responsivo**: menu no topo no desktop, barra fixa inferior no mobile.
+- **Mobile primeiro**: barra inferior fixa com indicação de página ativa e botão de ação em destaque; no desktop, navegação no topo.
+- **Seletores viram drawer no mobile** (bottom sheet do Vaul) e modal no desktop, com busca que ignora acentos — "triceps" acha "Tríceps".
+- Campos de toque com 44px de altura e sem setas em `input[type=number]`, para digitar carga rápido na academia.
+- **Tema claro/escuro** com paleta esmeralda própria e detecção da preferência do sistema (`next-themes`).
 - Componentes **shadcn/ui** sobre Radix UI, ícones Lucide, notificações via Sonner.
 
 ---
@@ -79,12 +81,12 @@ Limitações conhecidas:
 | Descanso entre séries | Não há cronômetro nem registro do tempo de descanso. |
 | Metas e periodização | Não há definição de meta de carga nem sugestão automática de progressão. |
 | Medidas corporais | Só treino é registrado — sem peso corporal, medidas ou fotos. |
-| Seletor de exercício | É um `Select` agrupado por grupo muscular. Com o catálogo crescendo, um combobox com busca (`cmdk`) seria melhor. |
+| Volume ignora peso corporal | Volume é `reps × carga`, então flexão, barra e prancha contam zero. Para quem treina sobretudo com peso corporal, o gráfico de volume fica achatado. |
+| `createRouteMatcher` | Depreciado no Clerk 7: a recomendação passou a ser checar autorização em cada página/rota em vez de casar caminhos no proxy. Funciona hoje, mas sai no próximo major. |
 | Exercícios personalizados | O schema já suporta (`Exercise.userId`), mas ainda não há tela para criar. |
 | Bundle da home | Os gráficos levam a home a ~314 kB de First Load JS. Um `dynamic()` no recharts resolveria. |
 | `footer.tsx` | O componente existe, mas está comentado no `main-layout`. |
 | Componentes shadcn sem uso | Alguns arquivos em `components/ui/` não são importados por ninguém, e os pacotes Radix correspondentes seguem no `package.json`. |
-| `next lint` | Deprecado no Next 15.5 e removido no 16 — migrar para o ESLint CLI. |
 | Testes | O projeto não tem testes automatizados. |
 
 ---
@@ -93,11 +95,11 @@ Limitações conhecidas:
 
 | Camada | Tecnologia |
 |---|---|
-| Framework | Next.js 15.5 (App Router, Server Actions, Turbopack em dev) |
+| Framework | Next.js 16.3 (App Router, Server Actions, Turbopack) |
 | Linguagem | TypeScript 5 |
-| UI | React 19, Tailwind CSS 3, shadcn/ui, Radix UI, Lucide, Sonner |
-| Gráficos | Recharts 3 |
-| Autenticação | Clerk 6 |
+| UI | React 19, Tailwind CSS 4, shadcn/ui, Radix UI, Vaul, Lucide, Sonner |
+| Gráficos | Recharts 2 (via shadcn/chart) |
+| Autenticação | Clerk 7 (Core 3) |
 | Banco | PostgreSQL (Neon) via Prisma 6 |
 | Formulários | React Hook Form + Zod |
 | Datas | date-fns (locale pt-BR) |
@@ -181,7 +183,7 @@ Os arquivos `.env*` estão no `.gitignore` e **não vão junto no deploy** — e
 | `pnpm dev` | Servidor de desenvolvimento com Turbopack |
 | `pnpm build` | Build de produção |
 | `pnpm start` | Sobe o build de produção |
-| `pnpm lint` | ESLint |
+| `pnpm lint` | ESLint (flat config; `next lint` foi removido no Next 16) |
 | `pnpm exec prisma db seed` | Popula o catálogo de exercícios |
 
 ---
@@ -195,7 +197,7 @@ prisma/
   seed.ts                catálogo global de exercícios (idempotente)
   migrations/
 src/
-  middleware.ts          Clerk — protege /, /training/*, /history/*, /workout/*
+  proxy.ts               Clerk — protege /, /training/*, /history/*, /workout/*
   actions/
     training/            CRUD da ficha + validação Zod compartilhada
     workout/             createWorkoutSession, deleteWorkoutSession,
@@ -211,7 +213,8 @@ src/
   components/
     ui/                  shadcn/ui
     charts/              gráficos em Recharts
-    header, bottom-nav, treinos, historicos, mode-toggle, ...
+    picker.tsx           seletor: drawer no mobile, dialog no desktop
+    header, bottom-nav, page-header, header-title, treinos, ...
   lib/
     db.ts                singleton do Prisma Client
     training-day.ts      dias da semana
@@ -233,6 +236,10 @@ src/
 O histórico começa com `20241215212752_first`. A migration `20250101000000_add_training_day_and_sets` existe para corrigir um drift: `Training.trainingDay` e `TrainingMenu.sets` tinham sido aplicadas com `prisma db push`, sem migration correspondente. Ela usa `ADD COLUMN IF NOT EXISTS` — no-op em bancos que já têm as colunas, correta em um banco novo.
 
 Como `postinstall` roda `prisma migrate deploy`, toda migration é aplicada automaticamente no build da Vercel.
+
+### Convenções do Next 16
+
+O `middleware.ts` foi renomeado para `proxy.ts` — no Next 16 essa é a convenção, e o build acusa depreciação se o nome antigo for usado. O `AGENTS.md` e o `CLAUDE.md` na raiz são gerados automaticamente pelo Next; para desligar, use `agentRules: false` no `next.config.ts`.
 
 ---
 

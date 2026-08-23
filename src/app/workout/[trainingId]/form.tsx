@@ -3,9 +3,10 @@
 import React from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Plus, Save, Trash2 } from 'lucide-react'
+import { Check, Plus, Trash2 } from 'lucide-react'
 import { createWorkoutSession, syncPrescriptionWeights } from '@/actions/workout/_actions'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -79,6 +80,9 @@ function WorkoutForm({ trainingId, exercises }: {
     }))
   }
 
+  const totalSets = Object.values(rows).flat()
+    .filter((set) => Number(set.reps) > 0).length
+
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
 
@@ -124,6 +128,7 @@ function WorkoutForm({ trainingId, exercises }: {
       if (divergences.length) {
         toast.success(result.message, {
           description: 'A carga executada ficou diferente da ficha.',
+          duration: 8000,
           action: {
             label: 'Atualizar ficha',
             onClick: async () => {
@@ -142,90 +147,108 @@ function WorkoutForm({ trainingId, exercises }: {
   }
 
   return (
-    <form onSubmit={handleSubmit} className='flex flex-col gap-3'>
+    <form onSubmit={handleSubmit} className='space-y-3'>
       {exercises.map((exercise) => {
         const sets = rows[exercise.exerciseId] ?? []
         return (
           <Card key={exercise.exerciseId}>
-            <CardHeader className='p-3 pb-1'>
-              <CardTitle className='text-base'>{exercise.name}</CardTitle>
-              <p className='text-xs text-muted-foreground'>
-                Ficha: {exercise.prescribedSets} × {exercise.prescribedReps}
-                {exercise.targetWeight !== null && ` @ ${exercise.targetWeight}kg`}
-                {exercise.equipment && ` · ${exercise.equipment}`}
-              </p>
+            <CardHeader className='p-3 pb-2 space-y-1'>
+              <div className='flex items-start justify-between gap-2'>
+                <CardTitle className='text-base leading-tight'>{exercise.name}</CardTitle>
+                <Badge variant='secondary' className='shrink-0 tabular'>
+                  {exercise.prescribedSets}×{exercise.prescribedReps}
+                  {exercise.targetWeight !== null && ` · ${exercise.targetWeight}kg`}
+                </Badge>
+              </div>
               {exercise.previousSets.length > 0 && (
                 <p className='text-xs text-muted-foreground'>
-                  Última vez:{' '}
-                  {exercise.previousSets
+                  Última vez: {exercise.previousSets
                     .map((set) => `${set.weight}kg×${set.reps}`)
-                    .join(', ')}
+                    .join(' · ')}
                 </p>
               )}
             </CardHeader>
-            <CardContent className='p-3 pt-2'>
-              <div className='grid grid-cols-[2rem_1fr_1fr_1fr_2rem] gap-2 items-center text-[0.625rem] uppercase tracking-wide text-muted-foreground'>
+
+            <CardContent className='p-3 pt-0'>
+              <div className='grid grid-cols-[1.5rem_1fr_1fr_3.25rem_2.25rem] items-center gap-2 px-0.5 pb-1 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground'>
                 <span>#</span>
-                <span>Carga (kg)</span>
+                <span>Carga</span>
                 <span>Reps</span>
                 <span>RPE</span>
-                <span />
+                <span className='sr-only'>Remover</span>
               </div>
-              {sets.map((set, index) => (
-                <div key={index}
-                  className='grid grid-cols-[2rem_1fr_1fr_1fr_2rem] gap-2 items-center mt-1.5'>
-                  <span className='text-sm text-muted-foreground tabular-nums'>{index + 1}</span>
-                  <Input type='number' min={0} step='0.5' inputMode='decimal'
-                    aria-label={`Carga da série ${index + 1} de ${exercise.name}`}
-                    value={set.weight}
-                    onChange={(event) => updateSet(exercise.exerciseId, index, 'weight', event.target.value)}
-                    className='bg-white dark:bg-zinc-700 h-9' />
-                  <Input type='number' min={0} inputMode='numeric'
-                    aria-label={`Repetições da série ${index + 1} de ${exercise.name}`}
-                    value={set.reps}
-                    onChange={(event) => updateSet(exercise.exerciseId, index, 'reps', event.target.value)}
-                    className='bg-white dark:bg-zinc-700 h-9' />
-                  <Input type='number' min={1} max={10} inputMode='numeric' placeholder='1-10'
-                    aria-label={`Esforço percebido da série ${index + 1} de ${exercise.name}`}
-                    value={set.rpe}
-                    onChange={(event) => updateSet(exercise.exerciseId, index, 'rpe', event.target.value)}
-                    className='bg-white dark:bg-zinc-700 h-9' />
-                  <Button type='button' size='icon' variant='ghost'
-                    aria-label={`Remover série ${index + 1}`}
-                    disabled={sets.length === 1}
-                    onClick={() => removeSet(exercise.exerciseId, index)}
-                    className='h-8 w-8 text-red-500 hover:bg-red-500/20'>
-                    <Trash2 />
-                  </Button>
-                </div>
-              ))}
-              <Button type='button' variant='outline' size='sm' className='mt-2'
-                onClick={() => addSet(exercise.exerciseId)}>
-                <Plus /> Série
+
+              <div className='space-y-2'>
+                {sets.map((set, index) => (
+                  <div key={index}
+                    className='grid grid-cols-[1.5rem_1fr_1fr_3.25rem_2.25rem] items-center gap-2'>
+                    <span className='text-sm tabular text-muted-foreground'>{index + 1}</span>
+                    <Input type='number' min={0} step='0.5' inputMode='decimal' placeholder='0'
+                      aria-label={`Carga da série ${index + 1} de ${exercise.name}`}
+                      value={set.weight}
+                      onChange={(event) => updateSet(exercise.exerciseId, index, 'weight', event.target.value)}
+                      className='h-11 text-center tabular text-base' />
+                    <Input type='number' min={0} inputMode='numeric' placeholder='0'
+                      aria-label={`Repetições da série ${index + 1} de ${exercise.name}`}
+                      value={set.reps}
+                      onChange={(event) => updateSet(exercise.exerciseId, index, 'reps', event.target.value)}
+                      className='h-11 text-center tabular text-base' />
+                    <Input type='number' min={1} max={10} inputMode='numeric' placeholder='—'
+                      aria-label={`Esforço percebido da série ${index + 1} de ${exercise.name}`}
+                      value={set.rpe}
+                      onChange={(event) => updateSet(exercise.exerciseId, index, 'rpe', event.target.value)}
+                      className='h-11 px-1 text-center tabular' />
+                    <Button type='button' size='icon' variant='ghost'
+                      aria-label={`Remover série ${index + 1}`}
+                      disabled={sets.length === 1}
+                      onClick={() => removeSet(exercise.exerciseId, index)}
+                      className='size-9 text-muted-foreground hover:bg-destructive/10 hover:text-destructive'>
+                      <Trash2 className='size-4' />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              <Button type='button' variant='ghost' size='sm'
+                onClick={() => addSet(exercise.exerciseId)}
+                className='mt-2 w-full text-muted-foreground hover:text-foreground'>
+                <Plus className='size-4' /> Série
               </Button>
             </CardContent>
           </Card>
         )
       })}
 
-      <div className='grid gap-3 md:grid-cols-2'>
-        <div>
-          <Label htmlFor='performedAt'>Data e hora</Label>
-          <Input id='performedAt' type='datetime-local' value={performedAt}
-            onChange={(event) => setPerformedAt(event.target.value)}
-            className='bg-white dark:bg-zinc-700 mt-1.5' />
-        </div>
-        <div>
-          <Label htmlFor='notes'>Observações</Label>
-          <Input id='notes' value={notes} placeholder='opcional'
-            onChange={(event) => setNotes(event.target.value)}
-            className='bg-white dark:bg-zinc-700 mt-1.5' />
-        </div>
-      </div>
+      <Card>
+        <CardContent className='p-3 grid gap-3 md:grid-cols-2'>
+          <div>
+            <Label htmlFor='performedAt' className='text-xs text-muted-foreground'>
+              Data e hora
+            </Label>
+            <Input id='performedAt' type='datetime-local' value={performedAt}
+              onChange={(event) => setPerformedAt(event.target.value)}
+              className='h-11 mt-1.5' />
+          </div>
+          <div>
+            <Label htmlFor='notes' className='text-xs text-muted-foreground'>
+              Observações
+            </Label>
+            <Input id='notes' value={notes} placeholder='opcional'
+              onChange={(event) => setNotes(event.target.value)}
+              className='h-11 mt-1.5' />
+          </div>
+        </CardContent>
+      </Card>
 
-      <Button type='submit' size='lg' disabled={isPending} className='w-full md:w-auto md:self-start'>
-        <Save /> {isPending ? 'Salvando...' : 'Finalizar treino'}
-      </Button>
+      {/* Fixa acima da barra de navegação: finalizar não pode exigir rolar
+          até o fim de uma lista longa de exercícios. */}
+      <div className='sticky bottom-20 md:bottom-4 z-30 pt-2'>
+        <Button type='submit' size='lg' disabled={isPending}
+          className='w-full shadow-lg shadow-primary/20'>
+          <Check className='size-5' />
+          {isPending ? 'Salvando...' : `Finalizar · ${totalSets} ${totalSets === 1 ? 'série' : 'séries'}`}
+        </Button>
+      </div>
     </form>
   )
 }

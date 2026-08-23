@@ -1,15 +1,7 @@
 'use client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue
-} from '@/components/ui/select'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   Form,
   FormField,
@@ -17,7 +9,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form"
-import { PlusCircle, Save, Trash2 } from 'lucide-react'
+import { GripVertical, Plus, Save, Trash2 } from 'lucide-react'
 import React from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -27,6 +19,7 @@ import { createTraining, updateTraining } from '@/actions/training/_actions'
 import { TrainingFormSchema, type FormTrainingType } from '@/actions/training/_schema'
 import { TRAINING_DAYS } from '@/lib/training-day'
 import { groupByMuscle, type ExerciseOption } from '@/lib/exercise'
+import { Picker, type PickerGroup } from '@/components/picker'
 
 const emptyExercise = { exerciseId: '', reps: '', sets: '', targetWeight: '' }
 
@@ -49,7 +42,27 @@ function FormTrining({ idTraining, initialData, exercises, takenDays = [] }: {
 }) {
   const router = useRouter()
   const [isPending, startTransition] = React.useTransition()
-  const grouped = React.useMemo(() => groupByMuscle(exercises), [exercises])
+
+  const exerciseGroups: PickerGroup[] = React.useMemo(
+    () => groupByMuscle(exercises).map((group) => ({
+      label: group.label,
+      options: group.items.map((exercise) => ({
+        value: exercise.id,
+        label: exercise.name,
+        hint: exercise.equipment ?? undefined,
+      })),
+    })),
+    [exercises],
+  )
+
+  const dayGroups: PickerGroup[] = React.useMemo(() => [{
+    options: TRAINING_DAYS.map((day) => ({
+      value: day.value,
+      label: day.label,
+      disabled: takenDays.includes(day.value),
+      disabledReason: 'Já tem treino neste dia',
+    })),
+  }], [takenDays])
 
   const defaultValues = initialData
     ? {
@@ -92,150 +105,154 @@ function FormTrining({ idTraining, initialData, exercises, takenDays = [] }: {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)}
-        className='flex flex-col gap-3 items-start dark:[&_.text-destructive]:text-red-400'>
-        <FormField
-          control={form.control}
-          name="label"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Descrição</FormLabel>
-              <Input
-                placeholder='ex: Membros inferiores' {...field}
-                className="bg-white dark:bg-zinc-700"
-              />
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <div>
-          <FormField
-            control={form.control}
-            name="trainingDay"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Dia da semana</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <SelectTrigger className="w-[180px] bg-white dark:bg-zinc-700">
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TRAINING_DAYS.map((day) => (
-                      <SelectItem key={day.value} value={day.value}
-                        disabled={takenDays.includes(day.value)}>
-                        {day.label}{takenDays.includes(day.value) ? ' (ocupado)' : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-        <div className='flex flex-col gap-1 w-full'>
-          <h4>Exercícios:</h4>
+      <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-4'>
+        <Card>
+          <CardContent className='p-4 space-y-4'>
+            <FormField
+              control={form.control}
+              name="label"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Descrição</FormLabel>
+                  <Input
+                    placeholder='ex: Membros inferiores' {...field}
+                    className='h-11'
+                  />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="trainingDay"
+              render={({ field, fieldState }) => (
+                <FormItem>
+                  <FormLabel>Dia da semana</FormLabel>
+                  <Picker
+                    groups={dayGroups}
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    title='Dia da semana'
+                    description='Cada dia comporta um treino'
+                    placeholder='Selecione o dia'
+                    invalid={!!fieldState.error}
+                  />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </CardContent>
+        </Card>
+
+        <div className='space-y-3'>
+          <div className='flex items-center justify-between'>
+            <h2 className='text-sm font-semibold uppercase tracking-wide text-muted-foreground'>
+              Exercícios
+            </h2>
+            <span className='text-sm text-muted-foreground tabular'>
+              {fields.length}
+            </span>
+          </div>
+
           {fields.map((field, index) => (
-            <div key={field.id}
-              className='my-2 border rounded-sm p-2 bg-white dark:bg-zinc-700'>
-              <div className='flex justify-between items-center'>
-                <h6 className='uppercase text-xs font-bold tracking-wide'>
-                  Exercício - {index + 1}
-                </h6>
-                <Button size="icon"
-                  type='button'
-                  aria-label={`Remover exercício ${index + 1}`}
-                  onClick={() => remove(index)}
-                  disabled={fields.length === 1}
-                  className='bg-red-500/20 text-red-500 hover:bg-red-500/30 h-7 w-7 shadow-none'>
-                  <Trash2 />
-                </Button>
-              </div>
+            <Card key={field.id}>
+              <CardContent className='p-3 space-y-3'>
+                <div className='flex items-center gap-2'>
+                  <GripVertical className='size-4 shrink-0 text-muted-foreground' />
+                  <span className='text-xs font-semibold uppercase tracking-wide text-muted-foreground'>
+                    {index + 1}
+                  </span>
+                  <div className='ml-auto'>
+                    <Button size='icon' variant='ghost' type='button'
+                      aria-label={`Remover exercício ${index + 1}`}
+                      onClick={() => remove(index)}
+                      disabled={fields.length === 1}
+                      className='size-9 text-destructive hover:bg-destructive/10 hover:text-destructive'>
+                      <Trash2 className='size-4' />
+                    </Button>
+                  </div>
+                </div>
 
-              <FormField control={form.control}
-                name={`exercises.${index}.exerciseId`}
-                render={({ field: selectField }) => (
-                  <FormItem>
-                    <FormLabel className='text-[0.625rem] tracking-wide'>
-                      Exercício
-                    </FormLabel>
-                    <Select onValueChange={selectField.onChange} value={selectField.value}>
-                      <SelectTrigger className='bg-white dark:bg-zinc-800'>
-                        <SelectValue placeholder='Selecione o exercício' />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {grouped.map((group) => (
-                          <SelectGroup key={group.value}>
-                            <SelectLabel>{group.label}</SelectLabel>
-                            {group.items.map((exercise) => (
-                              <SelectItem key={exercise.id} value={exercise.id}>
-                                {exercise.name}
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField control={form.control}
+                  name={`exercises.${index}.exerciseId`}
+                  render={({ field: selectField, fieldState }) => (
+                    <FormItem>
+                      <Picker
+                        groups={exerciseGroups}
+                        value={selectField.value}
+                        onValueChange={selectField.onChange}
+                        title='Escolher exercício'
+                        placeholder='Selecione o exercício'
+                        searchable
+                        searchPlaceholder='Buscar exercício...'
+                        invalid={!!fieldState.error}
+                      />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <div className='grid grid-cols-3 gap-2 mt-2'>
-                <FormField control={form.control}
-                  name={`exercises.${index}.sets`}
-                  render={({ field: setsField }) => (
-                    <FormItem>
-                      <FormLabel className='text-[0.625rem] tracking-wide'>
-                        Séries
-                      </FormLabel>
-                      <Input type='number' min={1} {...setsField}
-                        className='bg-white dark:bg-zinc-800' />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField control={form.control}
-                  name={`exercises.${index}.reps`}
-                  render={({ field: repsField }) => (
-                    <FormItem>
-                      <FormLabel className='text-[0.625rem] tracking-wide'>
-                        Repetições
-                      </FormLabel>
-                      <Input type='number' min={1} {...repsField}
-                        className='bg-white dark:bg-zinc-800' />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField control={form.control}
-                  name={`exercises.${index}.targetWeight`}
-                  render={({ field: weightField }) => (
-                    <FormItem>
-                      <FormLabel className='text-[0.625rem] tracking-wide'>
-                        Carga (kg)
-                      </FormLabel>
-                      <Input type='number' min={0} step='0.5' placeholder='opcional'
-                        {...weightField}
-                        value={weightField.value ?? ''}
-                        className='bg-white dark:bg-zinc-800' />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
+                <div className='grid grid-cols-3 gap-2'>
+                  <FormField control={form.control}
+                    name={`exercises.${index}.sets`}
+                    render={({ field: setsField }) => (
+                      <FormItem>
+                        <FormLabel className='text-xs text-muted-foreground'>
+                          Séries
+                        </FormLabel>
+                        <Input type='number' min={1} inputMode='numeric'
+                          {...setsField} className='h-11 text-center tabular' />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField control={form.control}
+                    name={`exercises.${index}.reps`}
+                    render={({ field: repsField }) => (
+                      <FormItem>
+                        <FormLabel className='text-xs text-muted-foreground'>
+                          Reps
+                        </FormLabel>
+                        <Input type='number' min={1} inputMode='numeric'
+                          {...repsField} className='h-11 text-center tabular' />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField control={form.control}
+                    name={`exercises.${index}.targetWeight`}
+                    render={({ field: weightField }) => (
+                      <FormItem>
+                        <FormLabel className='text-xs text-muted-foreground'>
+                          Carga
+                        </FormLabel>
+                        <Input type='number' min={0} step='0.5' inputMode='decimal'
+                          placeholder='—'
+                          {...weightField}
+                          value={weightField.value ?? ''}
+                          className='h-11 text-center tabular' />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </CardContent>
+            </Card>
           ))}
-        </div>
 
-        <div className='flex gap-2'>
-          <Button type='button' variant='outline'
+          <Button type='button' variant='outline' className='w-full h-11'
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             onClick={() => append(emptyExercise as any)}>
-            <PlusCircle /> Adicionar exercício
+            <Plus className='size-4' /> Adicionar exercício
           </Button>
-          <Button type='submit' disabled={isPending}>
-            <Save /> {isPending ? 'Salvando...' : 'Salvar'}
+        </div>
+
+        {/* Barra de ação fixa: no mobile o formulário é longo e o salvar
+            não pode depender de rolar até o fim. */}
+        <div className='sticky bottom-20 md:bottom-4 z-30 pt-2'>
+          <Button type='submit' size='lg' disabled={isPending}
+            className='w-full shadow-lg md:w-auto'>
+            <Save className='size-4' /> {isPending ? 'Salvando...' : 'Salvar treino'}
           </Button>
         </div>
       </form>

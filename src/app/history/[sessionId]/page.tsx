@@ -4,7 +4,17 @@ import { notFound } from 'next/navigation'
 import { currentUser } from '@clerk/nextjs/server'
 import prisma from '@/lib/db'
 import { formatSessionDate, formatVolume, totalVolume } from '@/lib/workout'
+import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className='min-w-0'>
+      <p className='text-xs uppercase tracking-wide text-muted-foreground'>{label}</p>
+      <p className='truncate text-lg font-semibold tabular'>{value}</p>
+    </div>
+  )
+}
 
 async function SessionDetailPage({
   params,
@@ -36,41 +46,65 @@ async function SessionDetailPage({
   const exercises = [...byExercise.values()]
 
   return (
-    <div className='container mx-auto px-4 md:p-6'>
-      <h1 className='text-xl md:text-2xl font-medium'>{session.trainingLabel}</h1>
-      <p className='text-sm text-muted-foreground'>
-        {formatSessionDate(session.performedAt)} às {format(session.performedAt, 'HH:mm')}
-        {' · '}{session.setLogs.length} {session.setLogs.length === 1 ? 'série' : 'séries'}
-        {' · '}volume {formatVolume(totalVolume(session.setLogs))}
-      </p>
+    <div className='container mx-auto px-4 py-4 md:px-6 md:py-6 space-y-4'>
+      <div>
+        <h1 className='text-2xl font-semibold tracking-tight'>{session.trainingLabel}</h1>
+        <p className='text-sm text-muted-foreground'>
+          {formatSessionDate(session.performedAt)} às {format(session.performedAt, 'HH:mm')}
+        </p>
+      </div>
+
+      <Card>
+        <CardContent className='grid grid-cols-3 gap-3 p-4'>
+          <Stat label='Exercícios' value={String(exercises.length)} />
+          <Stat label='Séries' value={String(session.setLogs.length)} />
+          <Stat label='Volume' value={formatVolume(totalVolume(session.setLogs))} />
+        </CardContent>
+      </Card>
+
       {session.notes && (
-        <p className='text-sm mt-2 italic'>{session.notes}</p>
+        <Card>
+          <CardContent className='p-3 text-sm italic'>{session.notes}</CardContent>
+        </Card>
       )}
 
-      <div className='flex flex-col gap-3 mt-4'>
-        {exercises.map((exercise) => (
-          <Card key={exercise.name}>
-            <CardHeader className='p-3 pb-1'>
-              <CardTitle className='text-base'>{exercise.name}</CardTitle>
-            </CardHeader>
-            <CardContent className='p-3 pt-2'>
-              <div className='grid grid-cols-4 gap-2 text-[0.625rem] uppercase tracking-wide text-muted-foreground'>
-                <span>Série</span>
-                <span>Carga</span>
-                <span>Reps</span>
-                <span>RPE</span>
-              </div>
-              {exercise.sets.map((set) => (
-                <div key={set.id} className='grid grid-cols-4 gap-2 py-1.5 border-b last:border-b-0 tabular-nums'>
-                  <span className='text-muted-foreground'>{set.setNumber}</span>
-                  <span>{set.weight > 0 ? `${set.weight} kg` : '—'}</span>
-                  <span>{set.reps}</span>
-                  <span>{set.rpe === null ? '—' : set.rpe}</span>
+      <div className='space-y-3'>
+        {exercises.map((exercise) => {
+          const heaviest = Math.max(...exercise.sets.map((set) => set.weight))
+          return (
+            <Card key={exercise.name}>
+              <CardHeader className='p-3 pb-2'>
+                <div className='flex items-start justify-between gap-2'>
+                  <CardTitle className='text-base leading-tight'>{exercise.name}</CardTitle>
+                  {heaviest > 0 && (
+                    <Badge variant='secondary' className='shrink-0 tabular'>
+                      máx {heaviest}kg
+                    </Badge>
+                  )}
                 </div>
-              ))}
-            </CardContent>
-          </Card>
-        ))}
+              </CardHeader>
+              <CardContent className='p-3 pt-0'>
+                <div className='grid grid-cols-4 gap-2 pb-1 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground'>
+                  <span>Série</span>
+                  <span>Carga</span>
+                  <span>Reps</span>
+                  <span>RPE</span>
+                </div>
+                {exercise.sets.map((set) => (
+                  <div key={set.id}
+                    className='grid grid-cols-4 gap-2 border-b border-border py-2 text-sm tabular last:border-b-0'>
+                    <span className='text-muted-foreground'>{set.setNumber}</span>
+                    <span className={set.weight === heaviest && heaviest > 0 ? 'font-semibold' : ''}>
+                      {set.weight > 0 ? `${set.weight} kg` : '—'}
+                    </span>
+                    <span>{set.reps}</span>
+                    <span className='text-muted-foreground'>{set.rpe ?? '—'}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )
+        })}
       </div>
     </div>
   )

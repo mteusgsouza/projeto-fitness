@@ -1,54 +1,76 @@
 'use client'
 
 import React from 'react'
-import {
-  Area, AreaChart, Bar, BarChart, CartesianGrid,
-  ResponsiveContainer, Tooltip, XAxis, YAxis
-} from 'recharts'
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
+import { Activity, TrendingUp } from 'lucide-react'
 import type { WeeklyPoint } from '@/actions/stats/_actions'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig,
+} from '@/components/ui/chart'
 import { formatVolume } from '@/lib/workout'
 
-const axisProps = {
-  stroke: 'hsl(var(--muted-foreground))',
-  fontSize: 11,
+const frequencyConfig = {
+  sessions: { label: 'Treinos', color: 'hsl(var(--chart-1))' },
+} satisfies ChartConfig
+
+const volumeConfig = {
+  volume: { label: 'Volume', color: 'hsl(var(--chart-2))' },
+} satisfies ChartConfig
+
+const axis = {
   tickLine: false,
   axisLine: false,
+  tickMargin: 8,
+  fontSize: 11,
 } as const
 
-const tooltipStyle = {
-  backgroundColor: 'hsl(var(--background))',
-  border: '1px solid hsl(var(--border))',
-  borderRadius: '0.5rem',
-  fontSize: '0.8rem',
-} as const
+function ChartHeading({ title, value, caption, Icon }: {
+  title: string
+  value: string
+  caption: string
+  Icon: React.ComponentType<{ className?: string }>
+}) {
+  return (
+    <CardHeader className='pb-2 space-y-0'>
+      <div className='flex items-start justify-between gap-2'>
+        <div className='min-w-0'>
+          <CardTitle className='text-sm font-medium text-muted-foreground'>
+            {title}
+          </CardTitle>
+          <p className='text-2xl font-semibold tabular tracking-tight'>{value}</p>
+          <p className='text-xs text-muted-foreground'>{caption}</p>
+        </div>
+        <span className='rounded-lg bg-accent p-2 text-accent-foreground'>
+          <Icon className='size-4' />
+        </span>
+      </div>
+    </CardHeader>
+  )
+}
 
 export function FrequencyChart({ data }: { data: WeeklyPoint[] }) {
   const total = data.reduce((sum, point) => sum + point.sessions, 0)
+  const average = data.length ? total / data.length : 0
 
   return (
     <Card>
-      <CardHeader className='pb-2'>
-        <CardTitle className='text-base'>Frequência</CardTitle>
-        <p className='text-sm text-muted-foreground'>
-          {total} {total === 1 ? 'treino' : 'treinos'} nas últimas {data.length} semanas
-        </p>
-      </CardHeader>
-      <CardContent className='pl-0 pr-3'>
-        <ResponsiveContainer width='100%' height={180}>
+      <ChartHeading
+        title='Frequência'
+        value={`${total} ${total === 1 ? 'treino' : 'treinos'}`}
+        caption={`${average.toFixed(1).replace('.', ',')} por semana em ${data.length} semanas`}
+        Icon={Activity}
+      />
+      <CardContent className='pl-0 pr-3 pb-3'>
+        <ChartContainer config={frequencyConfig} className='aspect-auto h-[160px] w-full'>
           <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-            <CartesianGrid strokeDasharray='3 3' vertical={false}
-              stroke='hsl(var(--border))' />
-            <XAxis dataKey='label' {...axisProps} interval='preserveStartEnd' />
-            <YAxis {...axisProps} allowDecimals={false} width={28} />
-            <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'hsl(var(--muted))' }}
-              formatter={(value) => {
-                const sessions = Number(value)
-                return [`${sessions} treino${sessions === 1 ? '' : 's'}`, 'Sessões']
-              }} />
-            <Bar dataKey='sessions' fill='hsl(var(--chart-1))' radius={[4, 4, 0, 0]} />
+            <CartesianGrid vertical={false} strokeDasharray='3 3' />
+            <XAxis dataKey='label' {...axis} interval='preserveStartEnd' minTickGap={24} />
+            <YAxis {...axis} allowDecimals={false} width={26} />
+            <ChartTooltip content={<ChartTooltipContent indicator='dot' />} />
+            <Bar dataKey='sessions' fill='var(--color-sessions)' radius={[6, 6, 0, 0]} />
           </BarChart>
-        </ResponsiveContainer>
+        </ChartContainer>
       </CardContent>
     </Card>
   )
@@ -56,35 +78,40 @@ export function FrequencyChart({ data }: { data: WeeklyPoint[] }) {
 
 export function VolumeChart({ data }: { data: WeeklyPoint[] }) {
   const total = data.reduce((sum, point) => sum + point.volume, 0)
+  const active = data.filter((point) => point.volume > 0)
+  const average = active.length ? total / active.length : 0
 
   return (
     <Card>
-      <CardHeader className='pb-2'>
-        <CardTitle className='text-base'>Volume por semana</CardTitle>
-        <p className='text-sm text-muted-foreground'>
-          {formatVolume(total)} movimentados no período
-        </p>
-      </CardHeader>
-      <CardContent className='pl-0 pr-3'>
-        <ResponsiveContainer width='100%' height={180}>
+      <ChartHeading
+        title='Volume'
+        value={formatVolume(total)}
+        caption={`média de ${formatVolume(average)} por semana treinada`}
+        Icon={TrendingUp}
+      />
+      <CardContent className='pl-0 pr-3 pb-3'>
+        <ChartContainer config={volumeConfig} className='aspect-auto h-[160px] w-full'>
           <AreaChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
             <defs>
-              <linearGradient id='volumeFill' x1='0' y1='0' x2='0' y2='1'>
-                <stop offset='0%' stopColor='hsl(var(--chart-2))' stopOpacity={0.5} />
-                <stop offset='100%' stopColor='hsl(var(--chart-2))' stopOpacity={0.05} />
+              <linearGradient id='fillVolume' x1='0' y1='0' x2='0' y2='1'>
+                <stop offset='0%' stopColor='var(--color-volume)' stopOpacity={0.6} />
+                <stop offset='100%' stopColor='var(--color-volume)' stopOpacity={0.05} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray='3 3' vertical={false}
-              stroke='hsl(var(--border))' />
-            <XAxis dataKey='label' {...axisProps} interval='preserveStartEnd' />
-            <YAxis {...axisProps} width={38}
+            <CartesianGrid vertical={false} strokeDasharray='3 3' />
+            <XAxis dataKey='label' {...axis} interval='preserveStartEnd' minTickGap={24} />
+            <YAxis {...axis} width={34}
               tickFormatter={(value: number) => value >= 1000 ? `${Math.round(value / 1000)}t` : String(value)} />
-            <Tooltip contentStyle={tooltipStyle}
-              formatter={(value) => [formatVolume(Number(value)), 'Volume']} />
-            <Area type='monotone' dataKey='volume' stroke='hsl(var(--chart-2))'
-              strokeWidth={2} fill='url(#volumeFill)' />
+            <ChartTooltip content={
+              <ChartTooltipContent
+                formatter={(value) => formatVolume(Number(value))}
+                indicator='line'
+              />
+            } />
+            <Area type='monotone' dataKey='volume' stroke='var(--color-volume)'
+              strokeWidth={2} fill='url(#fillVolume)' />
           </AreaChart>
-        </ResponsiveContainer>
+        </ChartContainer>
       </CardContent>
     </Card>
   )

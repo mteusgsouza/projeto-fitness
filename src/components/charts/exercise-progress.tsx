@@ -1,29 +1,27 @@
 'use client'
 
 import React from 'react'
-import {
-  CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis
-} from 'recharts'
+import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
+import { Dumbbell } from 'lucide-react'
 import { getExerciseProgress, type ProgressPoint } from '@/actions/stats/_actions'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
-} from '@/components/ui/select'
+  ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig,
+} from '@/components/ui/chart'
+import { Picker, type PickerGroup } from '@/components/picker'
 
 type TrackedExercise = { id: string; name: string }
 
-const axisProps = {
-  stroke: 'hsl(var(--muted-foreground))',
-  fontSize: 11,
+const config = {
+  maxWeight: { label: 'Carga máxima', color: 'hsl(var(--chart-1))' },
+} satisfies ChartConfig
+
+const axis = {
   tickLine: false,
   axisLine: false,
-} as const
-
-const tooltipStyle = {
-  backgroundColor: 'hsl(var(--background))',
-  border: '1px solid hsl(var(--border))',
-  borderRadius: '0.5rem',
-  fontSize: '0.8rem',
+  tickMargin: 8,
+  fontSize: 11,
 } as const
 
 function ExerciseProgressChart({ exercises, initialExerciseId, initialData }: {
@@ -35,6 +33,10 @@ function ExerciseProgressChart({ exercises, initialExerciseId, initialData }: {
   const [data, setData] = React.useState(initialData)
   const [isPending, startTransition] = React.useTransition()
 
+  const groups: PickerGroup[] = React.useMemo(() => [{
+    options: exercises.map((exercise) => ({ value: exercise.id, label: exercise.name })),
+  }], [exercises])
+
   function handleChange(value: string) {
     setExerciseId(value)
     startTransition(async () => {
@@ -43,51 +45,68 @@ function ExerciseProgressChart({ exercises, initialExerciseId, initialData }: {
   }
 
   const best = data.length ? Math.max(...data.map((point) => point.maxWeight)) : 0
-  const first = data.length ? data[0].maxWeight : 0
-  const latest = data.length ? data[data.length - 1].maxWeight : 0
-  const delta = latest - first
+  const delta = data.length ? data[data.length - 1].maxWeight - data[0].maxWeight : 0
+  const enoughData = data.length >= 2
 
   return (
     <Card>
-      <CardHeader className='pb-2'>
-        <div className='flex items-start justify-between gap-3'>
-          <div>
-            <CardTitle className='text-base'>Progressão</CardTitle>
-            <p className='text-sm text-muted-foreground'>
-              {data.length < 2
-                ? 'Registre o mesmo exercício em mais de um treino para ver a evolução'
-                : `Recorde ${best}kg · ${delta >= 0 ? '+' : ''}${delta}kg desde o primeiro registro`}
+      <CardHeader className='pb-2 space-y-3'>
+        <div className='flex items-start justify-between gap-2'>
+          <div className='min-w-0'>
+            <CardTitle className='text-sm font-medium text-muted-foreground'>
+              Progressão
+            </CardTitle>
+            <p className='text-2xl font-semibold tabular tracking-tight'>
+              {best > 0 ? `${best} kg` : '—'}
+            </p>
+            <p className='text-xs text-muted-foreground'>
+              {enoughData
+                ? 'recorde de carga'
+                : 'registre este exercício em mais de um treino'}
             </p>
           </div>
-          <Select value={exerciseId} onValueChange={handleChange}>
-            <SelectTrigger className='w-[150px] shrink-0'>
-              <SelectValue placeholder='Exercício' />
-            </SelectTrigger>
-            <SelectContent>
-              {exercises.map((exercise) => (
-                <SelectItem key={exercise.id} value={exercise.id}>
-                  {exercise.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className='flex flex-col items-end gap-2'>
+            <span className='rounded-lg bg-accent p-2 text-accent-foreground'>
+              <Dumbbell className='size-4' />
+            </span>
+            {enoughData && delta !== 0 && (
+              <Badge variant={delta > 0 ? 'default' : 'secondary'} className='tabular'>
+                {delta > 0 ? '+' : ''}{delta} kg
+              </Badge>
+            )}
+          </div>
         </div>
+
+        <Picker
+          groups={groups}
+          value={exerciseId}
+          onValueChange={handleChange}
+          title='Escolher exercício'
+          searchable
+          searchPlaceholder='Buscar exercício...'
+          className='h-10'
+        />
       </CardHeader>
-      <CardContent className='pl-0 pr-3'>
-        <ResponsiveContainer width='100%' height={180}>
-          <LineChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}
-            style={{ opacity: isPending ? 0.5 : 1, transition: 'opacity 150ms' }}>
-            <CartesianGrid strokeDasharray='3 3' vertical={false}
-              stroke='hsl(var(--border))' />
-            <XAxis dataKey='label' {...axisProps} interval='preserveStartEnd' />
-            <YAxis {...axisProps} width={34}
-              tickFormatter={(value: number) => `${value}kg`} />
-            <Tooltip contentStyle={tooltipStyle}
-              formatter={(value) => [`${Number(value)} kg`, 'Carga máxima']} />
-            <Line type='monotone' dataKey='maxWeight' stroke='hsl(var(--chart-1))'
-              strokeWidth={2} dot={{ r: 3 }} />
+
+      <CardContent className='pl-0 pr-3 pb-3'>
+        <ChartContainer config={config}
+          className='aspect-auto h-[170px] w-full transition-opacity'
+          style={{ opacity: isPending ? 0.5 : 1 }}>
+          <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+            <CartesianGrid vertical={false} strokeDasharray='3 3' />
+            <XAxis dataKey='label' {...axis} interval='preserveStartEnd' minTickGap={24} />
+            <YAxis {...axis} width={36} tickFormatter={(value: number) => `${value}kg`} />
+            <ChartTooltip content={
+              <ChartTooltipContent
+                formatter={(value) => `${Number(value)} kg`}
+                indicator='dot'
+              />
+            } />
+            <Line type='monotone' dataKey='maxWeight' stroke='var(--color-maxWeight)'
+              strokeWidth={2.5} dot={{ r: 3, strokeWidth: 0, fill: 'var(--color-maxWeight)' }}
+              activeDot={{ r: 5 }} />
           </LineChart>
-        </ResponsiveContainer>
+        </ChartContainer>
       </CardContent>
     </Card>
   )

@@ -1,79 +1,45 @@
 "use client"
 
 import * as React from "react"
-import { Menubar, MenubarContent, MenubarItem, MenubarMenu, MenubarTrigger } from "./ui/menubar"
-import Link from "next/link";
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { BicepsFlexed, ClipboardList, House, Play } from "lucide-react"
+import { cn } from "@/lib/utils"
 
-type TMenu = {
-  title: string;
-  href: string;
-  submenu?: TMenu[];
-}
-
-const menus: TMenu[] = [
-  {
-    title: "Home",
-    href: "/",
-  },
-  {
-    title: "Treinos",
-    href: "",
-    submenu: [
-      {
-        title: "Listagem",
-        href: "/training",
-      },
-      {
-        title: "Cadastrar",
-        href: "/training/create",
-      }
-    ]
-  },
-  {
-    title: "Histórico",
-    href: "",
-    submenu: [
-      {
-        title: "Listagem",
-        href: "/history",
-      },
-      {
-        title: "Registrar",
-        href: "/history/create",
-      }
-    ]
-  },
+const menus = [
+  { title: "Início", href: "/", Icon: House },
+  { title: "Treinos", href: "/training", Icon: BicepsFlexed },
+  { title: "Histórico", href: "/history", Icon: ClipboardList },
+  { title: "Treinar", href: "/history/create", Icon: Play },
 ]
 
+function isActive(pathname: string, href: string) {
+  if (href === '/') return pathname === '/'
+  if (href === '/history/create') return pathname === '/history/create' || pathname.startsWith('/workout/')
+  return pathname === href || pathname.startsWith(`${href}/`)
+}
+
 export default function HeaderNavigationMenu() {
+  const pathname = usePathname()
 
   return (
-    <Menubar className="border-0 shadow-none bg-transparent">
+    <nav className="flex items-center gap-1">
       {menus.map((menu) => {
-        if (!menu.submenu) {
-          return (
-            <MenubarMenu key={menu.title}>
-              <Link href={menu.href} passHref>
-                <MenubarTrigger>{menu.title}</MenubarTrigger>
-              </Link>
-            </MenubarMenu>
-          )
-        }
+        const active = isActive(pathname, menu.href)
         return (
-          <MenubarMenu key={menu.title}>
-            <MenubarTrigger>{menu.title}</MenubarTrigger>
-            <MenubarContent>
-              {menu.submenu.map((submenu, key) => (
-                <Link key={key} href={submenu.href} passHref>
-                  <MenubarItem>
-                    {submenu.title}
-                  </MenubarItem>
-                </Link>
-              ))}
-            </MenubarContent>
-          </MenubarMenu>
+          <Link key={menu.href} href={menu.href}
+            aria-current={active ? 'page' : undefined}
+            className={cn(
+              'flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+              active
+                ? 'bg-accent text-accent-foreground'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+            )}>
+            <menu.Icon className="size-4" />
+            {menu.title}
+          </Link>
         )
       })}
-    </Menubar>
+    </nav>
   )
 }
