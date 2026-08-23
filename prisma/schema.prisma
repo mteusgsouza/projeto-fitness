@@ -11,50 +11,117 @@ datasource db {
 }
 
 model User {
-  id              String            @unique
-  first_name      String
-  last_name       String
-  updatedAt       DateTime          @updatedAt
-  createdAt       DateTime          @default(now()) @map("created_at")
-  trainings       Training[]
-  TrainingHistory TrainingHistory[]
-
-  @@index(id)
-}
-
-model Training {
-  id              String            @id @default(cuid())
-  label           String
-  trainingDay     String
-  updatedAt       DateTime          @updatedAt
-  createdAt       DateTime          @default(now()) @map("created_at")
-  User            User              @relation(fields: [userId], references: [id])
-  userId          String
-  TrainingHistory TrainingHistory[]
-  trainingMenu    TrainingMenu[]
-
-  @@index(id)
-}
-
-model TrainingMenu {
-  id         String    @id @default(cuid())
-  label      String
-  sets       Int
-  reps       Int
-  updatedAt  DateTime  @updatedAt
-  createdAt  DateTime  @default(now()) @map("created_at")
-  Training   Training? @relation(fields: [trainingId], references: [id])
-  trainingId String?
-}
-
-model TrainingHistory {
-  id         String   @id @default(cuid())
-  user       User     @relation(fields: [userId], references: [id])
-  userId     String
-  training   Training @relation(fields: [trainingId], references: [id])
-  trainingId String
+  id         String   @id
+  first_name String
+  last_name  String
   updatedAt  DateTime @updatedAt
   createdAt  DateTime @default(now()) @map("created_at")
 
-  @@index(id)
+  trainings Training[]
+  sessions  WorkoutSession[]
+  exercises Exercise[]
+}
+
+/// Catálogo de exercícios. `userId` nulo = exercício global vindo do seed;
+/// preenchido = exercício personalizado criado pelo usuário.
+model Exercise {
+  id          String  @id @default(cuid())
+  name        String
+  muscleGroup String
+  equipment   String?
+  /// iniciante | intermediario | avancado
+  level       String  @default("iniciante")
+  userId      String?
+  user        User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  trainingExercises TrainingExercise[]
+  setLogs           SetLog[]
+
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([name, userId])
+  @@index([muscleGroup])
+}
+
+/// A ficha de um dia da semana.
+model Training {
+  id          String @id @default(cuid())
+  label       String
+  trainingDay String
+  userId      String
+  user        User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  exercises TrainingExercise[]
+  sessions  WorkoutSession[]
+
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, trainingDay])
+  @@index([userId])
+}
+
+/// Prescrição: o que a ficha manda fazer. Uniforme entre as séries —
+/// a variação real de cada série fica em SetLog.
+model TrainingExercise {
+  id           String   @id @default(cuid())
+  trainingId   String
+  training     Training @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+  exerciseId   String
+  exercise     Exercise @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
+  order        Int
+  sets         Int
+  reps         Int
+  targetWeight Float?
+
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([trainingId])
+  @@index([exerciseId])
+}
+
+/// Uma sessão de treino realizada.
+/// `trainingId` é opcional com SetNull e `trainingLabel` guarda um snapshot do nome:
+/// assim, apagar a ficha não apaga meses de histórico de execução.
+model WorkoutSession {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trainingId    String?
+  training      Training? @relation(fields: [trainingId], references: [id], onDelete: SetNull)
+  trainingLabel String
+  performedAt   DateTime  @default(now())
+  notes         String?
+
+  setLogs SetLog[]
+
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId, performedAt])
+  @@index([trainingId])
+}
+
+/// Execução: uma linha por série efetivamente realizada.
+/// Aponta para o catálogo (Exercise), nunca para TrainingExercise — é isso que
+/// mantém o histórico intacto quando a ficha é editada.
+model SetLog {
+  id         String         @id @default(cuid())
+  sessionId  String
+  session    WorkoutSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  exerciseId String
+  exercise   Exercise       @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
+  setNumber  Int
+  reps       Int
+  /// kg; 0 para exercícios de peso corporal
+  weight     Float
+  /// esforço percebido, 1 a 10
+  rpe        Int?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([sessionId])
+  @@index([exerciseId])
 }

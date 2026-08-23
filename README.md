@@ -1,36 +1,249 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Projeto Fitness
 
-## Getting Started
+Aplicação web para montar fichas de treino de academia, registrar o que foi realmente executado em cada série e acompanhar a evolução ao longo do tempo.
 
-First, run the development server:
+Construído com Next.js (App Router), autenticação via Clerk e persistência em PostgreSQL com Prisma.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+---
+
+## O que o app faz
+
+### Autenticação
+- Cadastro e login via **Clerk**, com telas em `/sign-in` e `/sign-up` e interface traduzida para português (`@clerk/localizations`).
+- Menu de conta (`UserButton`) no cabeçalho, com logout e gerenciamento de perfil.
+- As rotas `/`, `/training/*`, `/history/*` e `/workout/*` são protegidas pelo middleware.
+- Na primeira visita, o usuário do Clerk é espelhado na tabela `User` via upsert.
+
+### Catálogo de exercícios
+- **63 exercícios pré-cadastrados** pelo seed, divididos em 8 grupos musculares (peito, costas, pernas, ombros, bíceps, tríceps, core, cardio), cada um com equipamento e nível (iniciante/intermediário/avançado).
+- O catálogo é global (`userId` nulo); a mesma tabela aceita exercícios personalizados por usuário.
+- É o que torna a comparação de evolução possível: "Rosca direta" é sempre a mesma entidade, em vez de texto livre digitado de formas diferentes.
+
+### Fichas de treino
+- **Uma ficha por dia da semana**, garantido por constraint no banco. Dias já ocupados aparecem desabilitados no formulário.
+- Cada exercício da ficha tem séries, repetições e carga alvo opcional.
+- Cadastrar (`/training/create`), editar (`/training/update/[id]`) e excluir, com lista dinâmica de exercícios.
+- Validação com **Zod** em schema compartilhado entre cliente e servidor.
+
+### Execução do treino
+- `/workout/[trainingId]` registra o treino **série a série**: carga, repetições e RPE (esforço percebido, 1–10) independentes por série.
+- Os campos vêm **pré-preenchidos com a última sessão** daquele exercício — ou com a prescrição da ficha, se for a primeira vez.
+- A prescrição é valor inicial, não trava: dá para mudar a carga só da última série, adicionar séries além do previsto ou parar antes.
+- Permite **lançamento retroativo** (data e hora editáveis) e observações.
+- Se a carga executada divergir da ficha, o app oferece atualizar a prescrição no fim da sessão.
+
+### Histórico
+- `/history` lista as sessões com data, número de exercícios, séries e volume total.
+- `/history/[sessionId]` mostra o detalhe série a série, com carga, reps e RPE.
+- Excluir uma sessão não afeta a ficha.
+
+### Gráficos na home
+- **Frequência**: treinos por semana nas últimas 12 semanas (semanas sem treino aparecem como zero, para o gráfico não mentir).
+- **Volume por semana**: soma de `reps × carga`.
+- **Progressão por exercício**: carga máxima ao longo do tempo, com seletor de exercício, recorde e variação desde o primeiro registro.
+
+### Interface
+- **Tema claro/escuro** com detecção da preferência do sistema (`next-themes`).
+- **Responsivo**: menu no topo no desktop, barra fixa inferior no mobile.
+- Componentes **shadcn/ui** sobre Radix UI, ícones Lucide, notificações via Sonner.
+
+---
+
+## Como o modelo de dados funciona
+
+A decisão central é separar **plano** de **execução**:
+
+```
+Exercise          catálogo, estável (nome, grupo muscular, equipamento, nível)
+  ↑                    ↑
+TrainingExercise   SetLog          ← execução aponta pro catálogo, não pra ficha
+  ↑                    ↑
+Training           WorkoutSession
+(ficha do dia)     (sessão realizada)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`SetLog` referencia `Exercise`, **nunca** `TrainingExercise`. Isso é o que mantém o histórico intacto quando a ficha é editada — e editar é frequente, já que a ficha muda conforme a evolução. Como `updateTraining` apaga e recria as linhas da prescrição, qualquer histórico preso a elas seria perdido a cada ajuste.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Pelo mesmo motivo, `WorkoutSession.trainingId` é opcional com `SetNull` e a sessão guarda um snapshot do nome em `trainingLabel`: apagar uma ficha não apaga meses de dados de execução.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+**Exemplo:** a ficha prescreve rosca direta 3×10 @ 15kg. A execução registra 10@15kg, 10@15kg e 8@12kg com RPE 9 — três linhas distintas em `SetLog`. O gráfico de progressão usa a carga **máxima** da sessão (15kg), não a última série, que costuma cair por fadiga.
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## Status do projeto
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Limitações conhecidas:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Item | Situação |
+|---|---|
+| Descanso entre séries | Não há cronômetro nem registro do tempo de descanso. |
+| Metas e periodização | Não há definição de meta de carga nem sugestão automática de progressão. |
+| Medidas corporais | Só treino é registrado — sem peso corporal, medidas ou fotos. |
+| Seletor de exercício | É um `Select` agrupado por grupo muscular. Com o catálogo crescendo, um combobox com busca (`cmdk`) seria melhor. |
+| Exercícios personalizados | O schema já suporta (`Exercise.userId`), mas ainda não há tela para criar. |
+| Bundle da home | Os gráficos levam a home a ~314 kB de First Load JS. Um `dynamic()` no recharts resolveria. |
+| `footer.tsx` | O componente existe, mas está comentado no `main-layout`. |
+| Componentes shadcn sem uso | Alguns arquivos em `components/ui/` não são importados por ninguém, e os pacotes Radix correspondentes seguem no `package.json`. |
+| `next lint` | Deprecado no Next 15.5 e removido no 16 — migrar para o ESLint CLI. |
+| Testes | O projeto não tem testes automatizados. |
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Stack
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Camada | Tecnologia |
+|---|---|
+| Framework | Next.js 15.5 (App Router, Server Actions, Turbopack em dev) |
+| Linguagem | TypeScript 5 |
+| UI | React 19, Tailwind CSS 3, shadcn/ui, Radix UI, Lucide, Sonner |
+| Gráficos | Recharts 3 |
+| Autenticação | Clerk 6 |
+| Banco | PostgreSQL (Neon) via Prisma 6 |
+| Formulários | React Hook Form + Zod |
+| Datas | date-fns (locale pt-BR) |
+| Deploy | Vercel |
+
+---
+
+## Rodando localmente
+
+### Pré-requisitos
+
+- **Node.js 20+**
+- **pnpm** — o projeto é padronizado em pnpm (versão fixada em `packageManager` no `package.json`)
+- Uma conta no [Clerk](https://clerk.com) e um banco **PostgreSQL** acessível
+
+### 1. Clonar e instalar
+
+```bash
+git clone https://github.com/mteusgsouza/projeto-fitness.git
+cd projeto-fitness
+pnpm install
+```
+
+> O `postinstall` roda `prisma generate && prisma migrate deploy`. O `migrate deploy` **aplica migrations no banco apontado por `DATABASE_URL`** — configure o `.env.local` antes, ou instale com `pnpm install --ignore-scripts` e rode os comandos do Prisma manualmente depois.
+
+### 2. Variáveis de ambiente
+
+Crie um `.env.local` na raiz:
+
+```bash
+# Clerk — copie do dashboard em API Keys
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_xxx
+CLERK_SECRET_KEY=sk_test_xxx
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+
+# PostgreSQL
+DATABASE_URL=postgres://usuario:senha@host/banco?sslmode=require
+```
+
+### 3. Preparar o banco
+
+```bash
+pnpm exec prisma migrate deploy
+```
+
+Popule o catálogo de exercícios (idempotente — pode rodar quantas vezes quiser):
+
+```bash
+pnpm exec prisma db seed
+```
+
+### 4. Subir o servidor
+
+```bash
+pnpm dev
+```
+
+Abra [http://localhost:3000](http://localhost:3000).
+
+---
+
+## Variáveis de ambiente
+
+| Variável | Obrigatória | Descrição |
+|---|:---:|---|
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | sim | Chave pública do Clerk (`pk_test_` em dev, `pk_live_` em produção) |
+| `CLERK_SECRET_KEY` | sim | Chave secreta do Clerk. Nunca comitar |
+| `NEXT_PUBLIC_CLERK_SIGN_IN_URL` | sim | Caminho da tela de login — `/sign-in` |
+| `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | sim | Caminho da tela de cadastro — `/sign-up` |
+| `DATABASE_URL` | sim | String de conexão PostgreSQL usada pelo Prisma |
+
+Os arquivos `.env*` estão no `.gitignore` e **não vão junto no deploy** — em produção, as variáveis precisam ser cadastradas no painel da Vercel.
+
+---
+
+## Scripts
+
+| Comando | O que faz |
+|---|---|
+| `pnpm dev` | Servidor de desenvolvimento com Turbopack |
+| `pnpm build` | Build de produção |
+| `pnpm start` | Sobe o build de produção |
+| `pnpm lint` | ESLint |
+| `pnpm exec prisma db seed` | Popula o catálogo de exercícios |
+
+---
+
+## Estrutura
+
+```
+prisma/
+  schema.prisma          User, Exercise, Training, TrainingExercise,
+                         WorkoutSession, SetLog
+  seed.ts                catálogo global de exercícios (idempotente)
+  migrations/
+src/
+  middleware.ts          Clerk — protege /, /training/*, /history/*, /workout/*
+  actions/
+    training/            CRUD da ficha + validação Zod compartilhada
+    workout/             createWorkoutSession, deleteWorkoutSession,
+                         syncPrescriptionWeights
+    stats/               agregações para os gráficos
+  app/
+    layout.tsx           ClerkProvider + ThemeProvider + UserProvider
+    page.tsx             Início, com os gráficos
+    (auth)/              sign-in, sign-up
+    training/            listagem, create, update/[id], delete-dialog
+    workout/[trainingId] execução série a série
+    history/             listagem, [sessionId], create (escolha da ficha)
+  components/
+    ui/                  shadcn/ui
+    charts/              gráficos em Recharts
+    header, bottom-nav, treinos, historicos, mode-toggle, ...
+  lib/
+    db.ts                singleton do Prisma Client
+    training-day.ts      dias da semana
+    exercise.ts          grupos musculares e agrupamento do catálogo
+    workout.ts           volume e formatação de datas
+```
+
+### Modelos
+
+- **User** — espelha o usuário do Clerk (o `id` é o ID do Clerk).
+- **Exercise** — catálogo. `userId` nulo = global; preenchido = personalizado.
+- **Training** — a ficha de um dia da semana. Único por `[userId, trainingDay]`.
+- **TrainingExercise** — a prescrição: qual exercício, quantas séries/reps, carga alvo.
+- **WorkoutSession** — uma sessão realizada, com data e snapshot do nome da ficha.
+- **SetLog** — uma linha por série executada: carga, reps e RPE.
+
+### Migrations
+
+O histórico começa com `20241215212752_first`. A migration `20250101000000_add_training_day_and_sets` existe para corrigir um drift: `Training.trainingDay` e `TrainingMenu.sets` tinham sido aplicadas com `prisma db push`, sem migration correspondente. Ela usa `ADD COLUMN IF NOT EXISTS` — no-op em bancos que já têm as colunas, correta em um banco novo.
+
+Como `postinstall` roda `prisma migrate deploy`, toda migration é aplicada automaticamente no build da Vercel.
+
+---
+
+## Deploy na Vercel
+
+1. Importe o repositório na Vercel — o framework é detectado automaticamente.
+2. Cadastre todas as variáveis da tabela acima em **Settings → Environment Variables**, marcando o ambiente **Production**.
+3. Faça um **Redeploy** depois de salvar: variáveis de ambiente só valem em deploys novos.
+4. Rode o seed uma vez contra o banco de produção para popular o catálogo.
+
+Dois pontos que costumam causar erro 500 em produção:
+
+- **Variável faltando.** O middleware do Clerk roda antes de qualquer página; sem `CLERK_SECRET_KEY` ou `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` ele lança exceção e a Vercel devolve *"This Routing Middleware has crashed"* em todas as rotas. O erro real aparece em **Logs → Runtime Logs**.
+- **Chaves de desenvolvimento em produção.** Chaves `pk_test_`/`sk_test_` pertencem a uma instância de desenvolvimento do Clerk, que tem limite de requisições baixo e não é suportada em domínio de produção. Para um deploy público, crie uma *Production instance* no Clerk e use as chaves `pk_live_`/`sk_live_`.

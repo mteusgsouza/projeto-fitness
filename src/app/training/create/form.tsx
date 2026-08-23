@@ -1,7 +1,15 @@
 'use client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
 import {
   Form,
   FormField,
@@ -11,57 +19,75 @@ import {
 } from "@/components/ui/form"
 import { PlusCircle, Save, Trash2 } from 'lucide-react'
 import React from 'react'
+import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createTraining, updateTraining } from '@/actions/training/_actions'
 import { TrainingFormSchema, type FormTrainingType } from '@/actions/training/_schema'
-import type { Prisma } from '@prisma/client'
+import { TRAINING_DAYS } from '@/lib/training-day'
+import { groupByMuscle, type ExerciseOption } from '@/lib/exercise'
 
-const initialExercice = {
-  label: '', reps: 0, sets: 0
-}
-type TTraining = {
-  label: string;
-  trainingDay: string;
-  trainingMenu: Prisma.TrainingMenuCreateManyTrainingInput[];
+const emptyExercise = { exerciseId: '', reps: '', sets: '', targetWeight: '' }
+
+export type TTraining = {
+  label: string
+  trainingDay: string
+  exercises: {
+    exerciseId: string
+    sets: number
+    reps: number
+    targetWeight: number | null
+  }[]
 }
 
-function FormTrining({ idTraining, initialData }: {
+function FormTrining({ idTraining, initialData, exercises, takenDays = [] }: {
   idTraining?: string
   initialData?: TTraining
+  exercises: ExerciseOption[]
+  takenDays?: string[]
 }) {
-  const emptyData = {
-    label: '',
-    trainingDay: '',
-    trainingMenu: [initialExercice]
-  }
-  let _initialData = emptyData
+  const router = useRouter()
+  const [isPending, startTransition] = React.useTransition()
+  const grouped = React.useMemo(() => groupByMuscle(exercises), [exercises])
 
-  if (initialData) {
-    const menuExercises = initialData.trainingMenu.map((exercise) => ({
-      label: exercise.label,
-      reps: exercise.reps,
-      sets: exercise.sets,
-    }))
-    _initialData = { label: initialData.label, trainingDay: initialData.trainingDay, trainingMenu: menuExercises }
-  }
+  const defaultValues = initialData
+    ? {
+      label: initialData.label,
+      trainingDay: initialData.trainingDay,
+      exercises: initialData.exercises.map((exercise) => ({
+        exerciseId: exercise.exerciseId,
+        reps: String(exercise.reps),
+        sets: String(exercise.sets),
+        targetWeight: exercise.targetWeight === null ? '' : String(exercise.targetWeight),
+      })),
+    }
+    : { label: '', trainingDay: '', exercises: [emptyExercise] }
 
   const form = useForm<FormTrainingType>({
     resolver: zodResolver(TrainingFormSchema, undefined, { raw: true }),
-    defaultValues: _initialData
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    defaultValues: defaultValues as any,
   })
 
   const { fields, append, remove } = useFieldArray({
-    name: "trainingMenu",
+    name: "exercises",
     control: form.control
   });
 
   function onSubmit(data: FormTrainingType) {
-    if (idTraining) {
-      updateTraining(idTraining, data)
-    } else {
-      createTraining(data)
-    }
+    startTransition(async () => {
+      const result = idTraining
+        ? await updateTraining(idTraining, data)
+        : await createTraining(data)
+
+      if (result.ok) {
+        toast.success(result.message)
+        router.push('/training')
+      } else {
+        toast.error(result.message)
+      }
+    })
   }
 
   return (
@@ -89,18 +115,17 @@ function FormTrining({ idTraining, initialData }: {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Dia da semana</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value} {...form.register("trainingDay")} >
+                <Select onValueChange={field.onChange} value={field.value}>
                   <SelectTrigger className="w-[180px] bg-white dark:bg-zinc-700">
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="segunda">Segunda</SelectItem>
-                    <SelectItem value="terca">Terça</SelectItem>
-                    <SelectItem value="quarta">Quarta</SelectItem>
-                    <SelectItem value="quinta">Quinta</SelectItem>
-                    <SelectItem value="sexta">Sexta</SelectItem>
-                    <SelectItem value="sabado">Sábado</SelectItem>
-                    <SelectItem value="domingo">Domingo</SelectItem>
+                    {TRAINING_DAYS.map((day) => (
+                      <SelectItem key={day.value} value={day.value}
+                        disabled={takenDays.includes(day.value)}>
+                        {day.label}{takenDays.includes(day.value) ? ' (ocupado)' : ''}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <FormMessage />
@@ -108,10 +133,10 @@ function FormTrining({ idTraining, initialData }: {
             )}
           />
         </div>
-        <div className='flex flex-col gap-1'>
+        <div className='flex flex-col gap-1 w-full'>
           <h4>Exercícios:</h4>
-          {fields.map((_field, index) => (
-            <div key={index}
+          {fields.map((field, index) => (
+            <div key={field.id}
               className='my-2 border rounded-sm p-2 bg-white dark:bg-zinc-700'>
               <div className='flex justify-between items-center'>
                 <h6 className='uppercase text-xs font-bold tracking-wide'>
@@ -119,55 +144,81 @@ function FormTrining({ idTraining, initialData }: {
                 </h6>
                 <Button size="icon"
                   type='button'
+                  aria-label={`Remover exercício ${index + 1}`}
                   onClick={() => remove(index)}
+                  disabled={fields.length === 1}
                   className='bg-red-500/20 text-red-500 hover:bg-red-500/30 h-7 w-7 shadow-none'>
                   <Trash2 />
                 </Button>
               </div>
-              <div className='grid grid-cols-5 gap-2'>
-                <div className='col-span-3'>
-                  <FormField control={form.control}
-                    name={`trainingMenu.${index}.label`}
-                    render={() => (
-                      <FormItem>
-                        <FormLabel className='text-[0.625rem] tracking-wide'>
-                          Descrição
-                        </FormLabel>
-                        <Input
-                          {...form.register(`trainingMenu.${index}.label`)}
-                          defaultValue={_field.label}
-                        />
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+
+              <FormField control={form.control}
+                name={`exercises.${index}.exerciseId`}
+                render={({ field: selectField }) => (
+                  <FormItem>
+                    <FormLabel className='text-[0.625rem] tracking-wide'>
+                      Exercício
+                    </FormLabel>
+                    <Select onValueChange={selectField.onChange} value={selectField.value}>
+                      <SelectTrigger className='bg-white dark:bg-zinc-800'>
+                        <SelectValue placeholder='Selecione o exercício' />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {grouped.map((group) => (
+                          <SelectGroup key={group.value}>
+                            <SelectLabel>{group.label}</SelectLabel>
+                            {group.items.map((exercise) => (
+                              <SelectItem key={exercise.id} value={exercise.id}>
+                                {exercise.name}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className='grid grid-cols-3 gap-2 mt-2'>
                 <FormField control={form.control}
-                  name={`trainingMenu.${index}.reps`}
-                  render={() => (
+                  name={`exercises.${index}.sets`}
+                  render={({ field: setsField }) => (
                     <FormItem>
                       <FormLabel className='text-[0.625rem] tracking-wide'>
-                        Repetições
+                        Séries
                       </FormLabel>
-                      <Input type='number'
-                        {...form.register(`trainingMenu.${index}.reps`)}
-                        defaultValue={_field.reps.toString()}
-                      />
+                      <Input type='number' min={1} {...setsField}
+                        className='bg-white dark:bg-zinc-800' />
                       <FormMessage />
                     </FormItem>
                   )}
                 />
                 <FormField control={form.control}
-                  name={`trainingMenu.${index}.sets`}
-                  render={() => (
+                  name={`exercises.${index}.reps`}
+                  render={({ field: repsField }) => (
                     <FormItem>
                       <FormLabel className='text-[0.625rem] tracking-wide'>
-                        Séries
+                        Repetições
                       </FormLabel>
-                      <Input type='number'
-                        {...form.register(`trainingMenu.${index}.sets`)}
-                        defaultValue={_field.sets.toString()}
-                      />
+                      <Input type='number' min={1} {...repsField}
+                        className='bg-white dark:bg-zinc-800' />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField control={form.control}
+                  name={`exercises.${index}.targetWeight`}
+                  render={({ field: weightField }) => (
+                    <FormItem>
+                      <FormLabel className='text-[0.625rem] tracking-wide'>
+                        Carga (kg)
+                      </FormLabel>
+                      <Input type='number' min={0} step='0.5' placeholder='opcional'
+                        {...weightField}
+                        value={weightField.value ?? ''}
+                        className='bg-white dark:bg-zinc-800' />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -176,17 +227,17 @@ function FormTrining({ idTraining, initialData }: {
             </div>
           ))}
         </div>
-        <Button type='button'
-          onClick={() =>
-            append({
-              ...initialExercice
-            })}
-          className='bg-indigo-500 !text-white hover:bg-indigo-600 active:bg-indigo-600 mx-auto'>
-          <PlusCircle /> Adicionar Exercício
-        </Button>
-        <Button type='submit' className='mt-3'>
-          <Save /> CADASTRAR TREINO
-        </Button>
+
+        <div className='flex gap-2'>
+          <Button type='button' variant='outline'
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            onClick={() => append(emptyExercise as any)}>
+            <PlusCircle /> Adicionar exercício
+          </Button>
+          <Button type='submit' disabled={isPending}>
+            <Save /> {isPending ? 'Salvando...' : 'Salvar'}
+          </Button>
+        </div>
       </form>
     </Form>
   )

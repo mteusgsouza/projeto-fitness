@@ -35,17 +35,13 @@ const menus: TMenu[] = [
     submenu: [
       {
         title: "Listagem",
-        href: "/training-history",
+        href: "/history",
       },
       {
-        title: "Cadastrar",
-        href: "/training-history/create",
+        title: "Registrar",
+        href: "/history/create",
       }
     ]
-  },
-  {
-    title: "Meu perfil",
-    href: "/my-profile",
   },
 ]
 

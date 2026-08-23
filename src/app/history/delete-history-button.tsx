@@ -1,7 +1,10 @@
 'use client'
+
 import React from 'react'
 import { toast } from 'sonner'
-import { deleteTraining } from '@/actions/training/_actions'
+import { Trash2 } from 'lucide-react'
+import { deleteWorkoutSession } from '@/actions/workout/_actions'
+import { Button } from '@/components/ui/button'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,19 +16,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger
 } from '@/components/ui/alert-dialog'
-import { Button } from '@/components/ui/button'
-import { Trash2 } from 'lucide-react'
 
-function DeleteTrainingButton({ idTreino, label }: { idTreino: string, label?: string }) {
+function DeleteHistoryButton({ id }: { id: string }) {
   const [isPending, startTransition] = React.useTransition()
 
   function handleDelete() {
     startTransition(async () => {
-      const result = await deleteTraining(idTreino)
+      const result = await deleteWorkoutSession(id)
       if (result?.ok) {
         toast.success(result.message)
       } else {
-        toast.error(result?.message ?? 'Não foi possível excluir o treino')
+        toast.error(result?.message ?? 'Não foi possível remover o registro')
       }
     })
   }
@@ -34,28 +35,26 @@ function DeleteTrainingButton({ idTreino, label }: { idTreino: string, label?: s
     <AlertDialog>
       <AlertDialogTrigger asChild>
         <Button size="icon" disabled={isPending}
-          aria-label="Excluir treino"
           className='bg-red-500/20 text-red-500 hover:bg-red-500/30 h-7 w-7 shadow-none'>
           <Trash2 />
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>
-            Excluir {label ? `o treino "${label}"` : 'este treino'}?
-          </AlertDialogTitle>
+          <AlertDialogTitle>Remover esta sessão?</AlertDialogTitle>
           <AlertDialogDescription>
-            Os exercícios do treino e os registros dele no seu histórico também
-            serão apagados. Esta ação não pode ser desfeita.
+            Todas as séries registradas nela serão apagadas e sairão dos seus
+            gráficos de evolução. A ficha de treino continua cadastrada.
+            Não dá para desfazer.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancelar</AlertDialogCancel>
-          <AlertDialogAction onClick={handleDelete}>Excluir</AlertDialogAction>
+          <AlertDialogAction onClick={handleDelete}>Remover</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )
 }
 
-export default DeleteTrainingButton
+export default DeleteHistoryButton
