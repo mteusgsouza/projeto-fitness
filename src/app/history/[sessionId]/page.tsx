@@ -3,7 +3,7 @@ import { format } from 'date-fns'
 import { notFound } from 'next/navigation'
 import { currentUser } from '@clerk/nextjs/server'
 import prisma from '@/lib/db'
-import { formatSessionDate, formatVolume, totalVolume } from '@/lib/workout'
+import { formatSessionDate } from '@/lib/workout'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
@@ -45,6 +45,19 @@ async function SessionDetailPage({
   }
   const exercises = [...byExercise.values()]
 
+  /**
+   * Esforco medio da sessao. Substitui o volume somado: quilos de exercicios
+   * diferentes nao se somam em nada legivel, enquanto o RPE ja nasce
+   * normalizado de 1 a 10 por serie — a media diz quao dura foi a sessao e
+   * permite comparar uma com a outra. Fica "—" se ninguem preencheu RPE.
+   */
+  const rpes = session.setLogs.map((log) => log.rpe).filter((rpe): rpe is number => rpe !== null)
+  const esforco = rpes.length
+    ? (rpes.reduce((total, rpe) => total + rpe, 0) / rpes.length).toLocaleString('pt-BR', {
+      minimumFractionDigits: 1, maximumFractionDigits: 1,
+    })
+    : null
+
   return (
     <div className='container mx-auto px-4 py-4 md:px-6 md:py-6 space-y-4'>
       <div>
@@ -58,7 +71,7 @@ async function SessionDetailPage({
         <CardContent className='grid grid-cols-3 gap-3 p-4'>
           <Stat label='Exercícios' value={String(exercises.length)} />
           <Stat label='Séries' value={String(session.setLogs.length)} />
-          <Stat label='Volume' value={formatVolume(totalVolume(session.setLogs))} />
+          <Stat label='Esforço médio' value={esforco ? `${esforco}/10` : '—'} />
         </CardContent>
       </Card>
 

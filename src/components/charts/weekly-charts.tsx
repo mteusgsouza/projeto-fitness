@@ -1,21 +1,16 @@
 'use client'
 
 import React from 'react'
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
-import { Activity, TrendingUp } from 'lucide-react'
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
+import { Activity } from 'lucide-react'
 import type { WeeklyPoint } from '@/actions/stats/_actions'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig,
 } from '@/components/ui/chart'
-import { formatVolume } from '@/lib/workout'
 
 const frequencyConfig = {
   sessions: { label: 'Treinos', color: 'hsl(var(--chart-1))' },
-} satisfies ChartConfig
-
-const volumeConfig = {
-  volume: { label: 'Volume', color: 'hsl(var(--chart-2))' },
 } satisfies ChartConfig
 
 const axis = {
@@ -70,47 +65,6 @@ export function FrequencyChart({ data }: { data: WeeklyPoint[] }) {
             <ChartTooltip content={<ChartTooltipContent indicator='dot' />} />
             <Bar dataKey='sessions' fill='var(--color-sessions)' radius={[6, 6, 0, 0]} />
           </BarChart>
-        </ChartContainer>
-      </CardContent>
-    </Card>
-  )
-}
-
-export function VolumeChart({ data }: { data: WeeklyPoint[] }) {
-  const total = data.reduce((sum, point) => sum + point.volume, 0)
-  const active = data.filter((point) => point.volume > 0)
-  const average = active.length ? total / active.length : 0
-
-  return (
-    <Card>
-      <ChartHeading
-        title='Volume'
-        value={formatVolume(total)}
-        caption={`média de ${formatVolume(average)} por semana treinada`}
-        Icon={TrendingUp}
-      />
-      <CardContent className='pl-0 pr-3 pb-3'>
-        <ChartContainer config={volumeConfig} className='aspect-auto h-[160px] w-full'>
-          <AreaChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-            <defs>
-              <linearGradient id='fillVolume' x1='0' y1='0' x2='0' y2='1'>
-                <stop offset='0%' stopColor='var(--color-volume)' stopOpacity={0.6} />
-                <stop offset='100%' stopColor='var(--color-volume)' stopOpacity={0.05} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid vertical={false} strokeDasharray='3 3' />
-            <XAxis dataKey='label' {...axis} interval='preserveStartEnd' minTickGap={24} />
-            <YAxis {...axis} width={34}
-              tickFormatter={(value: number) => value >= 1000 ? `${Math.round(value / 1000)}t` : String(value)} />
-            <ChartTooltip content={
-              <ChartTooltipContent
-                formatter={(value) => formatVolume(Number(value))}
-                indicator='line'
-              />
-            } />
-            <Area type='monotone' dataKey='volume' stroke='var(--color-volume)'
-              strokeWidth={2} fill='url(#fillVolume)' />
-          </AreaChart>
         </ChartContainer>
       </CardContent>
     </Card>

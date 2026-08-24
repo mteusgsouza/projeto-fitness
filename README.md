@@ -35,7 +35,7 @@ Construído com Next.js (App Router), autenticação via Clerk e persistência e
 - Se a carga executada divergir da ficha, o app oferece atualizar a prescrição no fim da sessão.
 
 ### Histórico
-- `/history` lista as sessões com data, número de exercícios e séries. Não há volume somado: quilos de exercícios diferentes não se somam em nada legível — 14 t de perna e 3 t de peito não são comparáveis, e nenhum dos dois diz se o treino foi bom.
+- `/history` lista as sessões com data, número de exercícios e séries. O detalhe acrescenta o **esforço médio** (RPE) da sessão. Não há volume somado: quilos de exercícios diferentes não se somam em nada legível — 14 t de perna e 3 t de peito não são comparáveis, e nenhum dos dois diz se o treino foi bom.
 - `/history/[sessionId]` mostra o detalhe série a série, com carga, reps e RPE.
 - Excluir uma sessão não afeta a ficha.
 
@@ -88,7 +88,6 @@ Limitações conhecidas:
 | Descanso entre séries | Não há cronômetro nem registro do tempo de descanso. |
 | Exercícios isométricos | Prancha e similares são gravados em `reps`, mas na prática a medida é tempo. O schema não tem noção de duração, então 3×45 ali significa 45 segundos por convenção, não por modelo. |
 | Descrições dos exercícios | Escritas com base em prática comum de academia, sem revisão de profissional de educação física. Servem de referência, não de prescrição. |
-| Volume no detalhe da sessão | O card de volume somado saiu da listagem e das últimas atividades, mas segue no detalhe de cada sessão — mesma métrica, mesma ressalva. |
 | Metas e periodização | Não há definição de meta de carga nem sugestão automática de progressão. |
 | Medidas corporais | Só treino é registrado — sem peso corporal, medidas ou fotos. |
 | `createRouteMatcher` | Depreciado no Clerk 7: a recomendação passou a ser checar autorização em cada página/rota em vez de casar caminhos no proxy. Funciona hoje, mas sai no próximo major. |
