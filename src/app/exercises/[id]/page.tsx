@@ -3,13 +3,12 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { ArrowLeft, Dumbbell, TrendingUp } from 'lucide-react'
+import { Dumbbell, TrendingUp } from 'lucide-react'
 import { currentUser } from '@clerk/nextjs/server'
 import prisma from '@/lib/db'
 import MainLayout from '@/components/main-layout'
 import { levelLabel, muscleGroupLabel } from '@/lib/exercise'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 const LEVEL_TONE: Record<string, string> = {
@@ -60,19 +59,14 @@ export default async function ExerciseDetailPage({
   return (
     <MainLayout>
       <div className='container mx-auto max-w-2xl px-4 py-4 md:px-6 md:py-6 space-y-4'>
-        <div className='flex items-start gap-2'>
-          <Link href='/exercises' passHref>
-            <Button variant='ghost' size='icon' aria-label='Voltar ao catálogo'
-              className='-ml-2 size-10 shrink-0'>
-              <ArrowLeft className='size-5' />
-            </Button>
-          </Link>
-          <div className='min-w-0'>
-            <p className='label-tec text-muted-foreground'>
-              {muscleGroupLabel(exercise.muscleGroup)}
-            </p>
-            <h1 className='text-2xl font-semibold tracking-tight'>{exercise.name}</h1>
-          </div>
+        {/* O voltar fica so no header: ele usa router.back() e leva de volta
+            para onde a pessoa veio, enquanto um link fixo para /exercises
+            mandaria para o lugar errado quem chegou pelo perfil. */}
+        <div className='min-w-0'>
+          <p className='label-tec text-muted-foreground'>
+            {muscleGroupLabel(exercise.muscleGroup)}
+          </p>
+          <h1 className='text-2xl font-semibold tracking-tight'>{exercise.name}</h1>
         </div>
 
         <div className='flex flex-wrap gap-2'>
