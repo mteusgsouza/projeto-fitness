@@ -10,6 +10,17 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { GripVertical, Plus, Save, Trash2 } from 'lucide-react'
+import {
+  DndContext, KeyboardSensor, PointerSensor, closestCenter,
+  useSensor, useSensors, type DragEndEvent, type DraggableAttributes,
+} from '@dnd-kit/core'
+import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities'
+import {
+  SortableContext, sortableKeyboardCoordinates, useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import { cn } from '@/lib/utils'
 import React from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -20,6 +31,34 @@ import { TrainingFormSchema, type FormTrainingType } from '@/actions/training/_s
 import { TRAINING_DAYS } from '@/lib/training-day'
 import { groupByMuscle, type ExerciseOption } from '@/lib/exercise'
 import { Picker, type PickerGroup } from '@/components/picker'
+
+/**
+ * Casca arrastavel da linha. Existe como componente porque useSortable e um
+ * hook por item e nao pode ser chamado dentro do map. O conteudo vem por
+ * render prop para os FormField continuarem no formulario, onde ja estavam.
+ */
+function SortableRow({ id, children }: {
+  id: string
+  children: (alca: {
+    setActivatorNodeRef: (node: HTMLElement | null) => void
+    attributes: DraggableAttributes
+    listeners: SyntheticListenerMap | undefined
+  }) => React.ReactNode
+}) {
+  const {
+    attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging,
+  } = useSortable({ id })
+
+  return (
+    <Card
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={cn(isDragging && 'relative z-10 opacity-80 shadow-lg ring-2 ring-primary/40')}
+    >
+      {children({ setActivatorNodeRef, attributes, listeners })}
+    </Card>
+  )
+}
 
 const emptyExercise = { exerciseId: '', reps: '', sets: '', targetWeight: '' }
 
@@ -89,7 +128,7 @@ function FormTrining({ idTraining, initialData, exercises, takenDays = [] }: {
     defaultValues: defaultValues as any,
   })
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, move } = useFieldArray({
     name: "exercises",
     control: form.control
   });
@@ -97,6 +136,23 @@ function FormTrining({ idTraining, initialData, exercises, takenDays = [] }: {
   // useWatch em vez de form.watch(): o watch() devolve funcao nao memoizavel
   // e o React Compiler pula a otimizacao do componente inteiro por causa dele.
   const watchedExercises = useWatch({ control: form.control, name: 'exercises' })
+
+  /** Mesmo padrao da tela de execucao: so a alca arrasta, com limiar de 8px
+   *  para o toque nao virar arrasto, e sensor de teclado para nao depender
+   *  de mouse. `move` do useFieldArray reindexa os campos sozinho. */
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const from = fields.findIndex((field) => field.id === active.id)
+    const to = fields.findIndex((field) => field.id === over.id)
+    if (from < 0 || to < 0) return
+    move(from, to)
+  }
 
   function onSubmit(data: FormTrainingType) {
     startTransition(async () => {
@@ -164,16 +220,27 @@ function FormTrining({ idTraining, initialData, exercises, takenDays = [] }: {
             </span>
           </div>
 
+          <DndContext sensors={sensors} collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}>
+          <SortableContext items={fields.map((field) => field.id)}
+            strategy={verticalListSortingStrategy}>
           {fields.map((field, index) => {
             const selectedId = watchedExercises?.[index]?.exerciseId
             // Enquanto nada foi escolhido, mostra a carga: a maioria usa
             const showLoad = !selectedId || usesLoadById.get(selectedId) !== false
 
             return (
-            <Card key={field.id}>
+            <SortableRow key={field.id} id={field.id}>
+              {({ setActivatorNodeRef, attributes, listeners }) => (
               <CardContent className='p-3 space-y-3'>
                 <div className='flex items-center gap-2'>
-                  <GripVertical className='size-4 shrink-0 text-muted-foreground' />
+                  {/* Antes isto era so um icone: parecia arrastavel e nao era */}
+                  <button type='button' ref={setActivatorNodeRef}
+                    {...attributes} {...listeners}
+                    aria-label={`Reordenar exercício ${index + 1}`}
+                    className='-ml-2 flex size-9 shrink-0 cursor-grab touch-none items-center justify-center text-muted-foreground hover:text-foreground active:cursor-grabbing'>
+                    <GripVertical className='size-4' />
+                  </button>
                   <span className='text-xs font-semibold uppercase tracking-wide text-muted-foreground'>
                     {index + 1}
                   </span>
@@ -254,9 +321,12 @@ function FormTrining({ idTraining, initialData, exercises, takenDays = [] }: {
                   )}
                 </div>
               </CardContent>
-            </Card>
+              )}
+            </SortableRow>
             )
           })}
+          </SortableContext>
+          </DndContext>
 
           <Button type='button' variant='outline' className='w-full h-11'
             // eslint-disable-next-line @typescript-eslint/no-explicit-any

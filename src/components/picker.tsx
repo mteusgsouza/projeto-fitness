@@ -119,16 +119,21 @@ export function Picker({
 
   const list = (
     <div className='flex min-h-0 flex-col'>
+      {/* O `relative` precisa envolver so o input: com o padding dentro dele,
+          top-1/2 mirava o centro da caixa de 56px e o icone caia 6px abaixo
+          do centro do campo. */}
       {searchable && (
-        <div className='relative px-4 pb-3'>
-          <Search className='pointer-events-none absolute left-7 top-1/2 size-4 -translate-y-1/2 text-muted-foreground' />
-          <Input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={searchPlaceholder}
-            className='h-11 pl-9'
-            autoFocus={!isMobile}
-          />
+        <div className='px-4 pb-3'>
+          <div className='relative'>
+            <Search className='pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground' />
+            <Input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={searchPlaceholder}
+              className='h-11 pl-9'
+              autoFocus={!isMobile}
+            />
+          </div>
         </div>
       )}
 
