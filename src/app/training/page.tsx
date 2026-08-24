@@ -5,6 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import PageHeader from '@/components/page-header'
 import prisma from '@/lib/db'
 import { trainingDayLabel } from '@/lib/training-day'
+import { formatPrescription } from '@/lib/workout'
 import { currentUser } from '@clerk/nextjs/server'
 import { AlertCircle, Pencil, Play, Plus } from 'lucide-react'
 import Link from 'next/link'
@@ -90,8 +91,7 @@ async function TrainingPage() {
                           className='flex items-center justify-between gap-3 py-2 transition-colors hover:text-primary'>
                           <span className='min-w-0 truncate text-sm'>{item.exercise.name}</span>
                           <span className='shrink-0 text-sm tabular text-muted-foreground'>
-                            {item.sets}×{item.reps}
-                            {item.targetWeight !== null && ` · ${item.targetWeight}kg`}
+                            {formatPrescription(item)}
                           </span>
                         </Link>
                       </li>

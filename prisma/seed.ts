@@ -11,6 +11,22 @@ type CatalogExercise = {
 }
 
 /**
+ * Exercicios medidos em tempo, nao em repeticoes. Nao da para deduzir do
+ * grupo: burpee e cardio mas conta repeticao, e prancha e core mas conta
+ * tempo. Por isso a lista e explicita.
+ */
+const POR_DURACAO = new Set([
+  'Esteira', 'Bicicleta ergométrica', 'Elíptico', 'Remo ergométrico',
+  'Simulador de escada', 'Corda naval', 'Pular corda',
+  'Prancha isométrica', 'Prancha lateral',
+])
+
+/** Onde distancia faz sentido. Corda naval e prancha tem tempo, nao km. */
+const COM_DISTANCIA = new Set([
+  'Esteira', 'Bicicleta ergométrica', 'Elíptico', 'Remo ergométrico',
+])
+
+/**
  * Carga externa nao se aplica a peso corporal nem a cardio. Nesses casos o
  * campo de carga some do formulario e o exercicio fica fora da progressao de
  * peso — a variante com carga e outro item do catalogo (agachamento livre
@@ -137,6 +153,14 @@ const catalog: CatalogExercise[] = [
 ]
 
 async function main() {
+  // Um nome errado nas listas acima nao faria nada e ninguem perceberia:
+  // o exercicio simplesmente ficaria como repeticao. Melhor falhar aqui.
+  const nomes = new Set(catalog.map((exercise) => exercise.name))
+  const invalidos = [...POR_DURACAO, ...COM_DISTANCIA].filter((nome) => !nomes.has(nome))
+  if (invalidos.length) {
+    throw new Error('nomes fora do catalogo: ' + invalidos.join(', '))
+  }
+
   console.log('seed: ' + catalog.length + ' exercícios no catálogo')
 
   const semDetalhe = catalog.filter((e) => !EXERCISE_DETAILS[e.name]).map((e) => e.name)
@@ -164,6 +188,8 @@ async function main() {
     const data = {
       ...exercise,
       usesLoad: usesLoad(exercise),
+      tracking: POR_DURACAO.has(exercise.name) ? 'duration' : 'reps',
+      usesDistance: COM_DISTANCIA.has(exercise.name),
       description: detail?.description ?? null,
       muscles: detail?.muscles ?? [],
     }

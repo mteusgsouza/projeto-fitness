@@ -7,9 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Picker, type PickerGroup } from '@/components/picker'
 import { ProgressLine, progressSummary } from './progress-line'
-import { formatNumber } from '@/lib/workout'
 
-export type TrackedExercise = { id: string; name: string; usesLoad: boolean }
+export type TrackedExercise = {
+  id: string
+  name: string
+  usesLoad: boolean
+  tracking: string
+}
 
 /**
  * Progressão com seletor, para o perfil. A curva em si vem de ProgressLine,
@@ -25,14 +29,19 @@ function ExerciseProgressChart({ exercises, initialExerciseId, initialData }: {
   const [isPending, startTransition] = React.useTransition()
 
   const selected = exercises.find((exercise) => exercise.id === exerciseId)
-  const usesLoad = selected?.usesLoad !== false
-  const { best, delta, unit, enough } = progressSummary(data, usesLoad)
+  const measure = {
+    usesLoad: selected?.usesLoad !== false,
+    tracking: selected?.tracking ?? 'reps',
+  }
+  const { best, deltaLabel, delta, caption, format, enough } = progressSummary(data, measure)
 
   const groups: PickerGroup[] = React.useMemo(() => [{
     options: exercises.map((exercise) => ({
       value: exercise.id,
       label: exercise.name,
-      hint: exercise.usesLoad ? undefined : 'peso corporal',
+      hint: exercise.tracking === 'duration'
+        ? 'por tempo'
+        : exercise.usesLoad ? undefined : 'peso corporal',
     })),
   }], [exercises])
 
@@ -50,12 +59,10 @@ function ExerciseProgressChart({ exercises, initialExerciseId, initialData }: {
           <div className='min-w-0'>
             <CardTitle className='label-tec text-muted-foreground'>Progressão</CardTitle>
             <p className='text-2xl font-semibold tabular tracking-tight'>
-              {best > 0 ? `${formatNumber(best)} ${unit}` : '—'}
+              {best > 0 ? format(best) : '—'}
             </p>
             <p className='text-xs text-muted-foreground'>
-              {enough
-                ? (usesLoad ? 'recorde de carga' : 'recorde de repetições')
-                : 'registre este exercício em mais de um treino'}
+              {enough ? caption : 'registre este exercício em mais de um treino'}
             </p>
           </div>
           <div className='flex flex-col items-end gap-2'>
@@ -64,7 +71,7 @@ function ExerciseProgressChart({ exercises, initialExerciseId, initialData }: {
             </span>
             {enough && delta !== 0 && (
               <Badge variant={delta > 0 ? 'default' : 'secondary'} className='tabular'>
-                {delta > 0 ? '+' : ''}{formatNumber(delta)} {unit}
+                {deltaLabel}
               </Badge>
             )}
           </div>
@@ -82,7 +89,7 @@ function ExerciseProgressChart({ exercises, initialExerciseId, initialData }: {
       </CardHeader>
 
       <CardContent className='pl-0 pr-3 pb-3'>
-        <ProgressLine data={data} usesLoad={usesLoad} dimmed={isPending} />
+        <ProgressLine data={data} measure={measure} dimmed={isPending} />
       </CardContent>
     </Card>
   )

@@ -22,8 +22,10 @@ export type ProgressPoint = {
   date: string
   label: string
   maxWeight: number
-  /** Maior numero de reps numa serie da sessao — e a progressao do peso corporal */
+  /** Maior numero de reps numa serie — progressao de quem treina peso corporal */
   maxReps: number
+  /** Maior duracao numa serie, em segundos — progressao de cardio e isometrico */
+  maxDuration: number
   volume: number
   reps: number
 }
@@ -76,7 +78,10 @@ export async function getTrackedExercises() {
 
   const logs = await prisma.setLog.findMany({
     where: { session: { userId: user.id } },
-    select: { exerciseId: true, exercise: { select: { name: true, usesLoad: true } } },
+    select: {
+      exerciseId: true,
+      exercise: { select: { name: true, usesLoad: true, tracking: true } },
+    },
     distinct: ['exerciseId'],
   })
 
@@ -85,6 +90,7 @@ export async function getTrackedExercises() {
       id: log.exerciseId,
       name: log.exercise.name,
       usesLoad: log.exercise.usesLoad,
+      tracking: log.exercise.tracking,
     }))
     .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
 }
@@ -103,17 +109,18 @@ export async function getExerciseProgress(exerciseId: string): Promise<ProgressP
     orderBy: { session: { performedAt: 'asc' } },
     select: {
       reps: true,
+      durationSeconds: true,
       weight: true,
       sessionId: true,
       session: { select: { performedAt: true } },
     },
   })
 
-  const bySession = new Map<string, { performedAt: Date; sets: { reps: number; weight: number }[] }>()
+  const bySession = new Map<string, { performedAt: Date; sets: { reps: number | null; durationSeconds: number | null; weight: number }[] }>()
   for (const log of logs) {
     const bucket = bySession.get(log.sessionId)
-      ?? { performedAt: log.session.performedAt, sets: [] }
-    bucket.sets.push({ reps: log.reps, weight: log.weight })
+      ?? { performedAt: log.session.performedAt, sets: [] as { reps: number | null; durationSeconds: number | null; weight: number }[] }
+    bucket.sets.push({ reps: log.reps, durationSeconds: log.durationSeconds, weight: log.weight })
     bySession.set(log.sessionId, bucket)
   }
 
@@ -123,9 +130,10 @@ export async function getExerciseProgress(exerciseId: string): Promise<ProgressP
       date: session.performedAt.toISOString(),
       label: format(session.performedAt, "d 'de' MMM", { locale: ptBR }),
       maxWeight: Math.max(...session.sets.map((set) => set.weight)),
-      maxReps: Math.max(...session.sets.map((set) => set.reps)),
+      maxReps: Math.max(...session.sets.map((set) => set.reps ?? 0)),
+      maxDuration: Math.max(...session.sets.map((set) => set.durationSeconds ?? 0)),
       volume: Math.round(totalVolume(session.sets)),
-      reps: session.sets.reduce((total, set) => total + set.reps, 0),
+      reps: session.sets.reduce((total, set) => total + (set.reps ?? 0), 0),
     }))
 }
 

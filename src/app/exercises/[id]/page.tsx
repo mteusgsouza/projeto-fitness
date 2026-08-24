@@ -7,6 +7,7 @@ import { currentUser } from '@clerk/nextjs/server'
 import prisma from '@/lib/db'
 import { getExerciseProgress } from '@/actions/stats/_actions'
 import { ProgressLine } from '@/components/charts/progress-line'
+import { progressMetric } from '@/lib/progress'
 import MainLayout from '@/components/main-layout'
 import { levelLabel, muscleGroupLabel } from '@/lib/exercise'
 import { Badge } from '@/components/ui/badge'
@@ -16,10 +17,6 @@ const LEVEL_TONE: Record<string, string> = {
   iniciante: 'bg-primary/15 text-primary border-primary/25',
   intermediario: 'bg-chart-3/15 text-chart-3 border-chart-3/25',
   avancado: 'bg-destructive/15 text-destructive border-destructive/25',
-}
-
-function num(value: number) {
-  return value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
 }
 
 export default async function ExerciseDetailPage({
@@ -42,6 +39,7 @@ export default async function ExerciseDetailPage({
     where: { exerciseId: exercise.id, session: { userId: user.id } },
     select: {
       reps: true,
+      durationSeconds: true,
       weight: true,
       sessionId: true,
       session: { select: { performedAt: true } },
@@ -50,11 +48,15 @@ export default async function ExerciseDetailPage({
   })
 
   const sessoes = new Set(logs.map((log) => log.sessionId)).size
+  const porDuracao = exercise.tracking === 'duration'
   const recorde = logs.length
-    ? (exercise.usesLoad
-      ? Math.max(...logs.map((log) => log.weight))
-      : Math.max(...logs.map((log) => log.reps)))
+    ? (porDuracao
+      ? Math.max(...logs.map((log) => log.durationSeconds ?? 0))
+      : exercise.usesLoad
+        ? Math.max(...logs.map((log) => log.weight))
+        : Math.max(...logs.map((log) => log.reps ?? 0)))
     : 0
+  const medida = progressMetric(exercise)
   const ultima = logs[0]?.session.performedAt
 
   // A curva vem da mesma consulta que alimenta a progressao no perfil
@@ -83,6 +85,7 @@ export default async function ExerciseDetailPage({
           <Badge variant='secondary'>
             {exercise.usesLoad ? 'com carga' : 'sem carga'}
           </Badge>
+          {porDuracao && <Badge variant='secondary'>por tempo</Badge>}
         </div>
 
         {exercise.description && (
@@ -140,7 +143,7 @@ export default async function ExerciseDetailPage({
                   <div>
                     <p className='label-tec text-muted-foreground'>Recorde</p>
                     <p className='text-xl font-semibold tabular'>
-                      {num(recorde)} {exercise.usesLoad ? 'kg' : 'reps'}
+                      {medida.format(recorde)}
                     </p>
                   </div>
                   <div>
@@ -152,7 +155,7 @@ export default async function ExerciseDetailPage({
                 </div>
                 {progresso.length >= 2 ? (
                   <div className='mt-4 -ml-2'>
-                    <ProgressLine data={progresso} usesLoad={exercise.usesLoad} />
+                    <ProgressLine data={progresso} measure={exercise} />
                   </div>
                 ) : (
                   <p className='mt-3 text-sm text-muted-foreground'>
@@ -169,8 +172,8 @@ export default async function ExerciseDetailPage({
           <p className='flex items-start gap-2 text-xs text-muted-foreground'>
             <Dumbbell className='mt-0.5 size-3.5 shrink-0' />
             Este exercício não usa carga externa, então a progressão dele é medida
-            em repetições. A versão com peso, quando existe, é um exercício
-            separado no catálogo.
+            em {porDuracao ? 'tempo' : 'repetições'}. A versão com peso, quando
+            existe, é um exercício separado no catálogo.
           </p>
         )}
       </div>

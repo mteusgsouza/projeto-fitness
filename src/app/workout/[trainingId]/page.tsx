@@ -24,7 +24,7 @@ async function WorkoutPage({
     include: {
       exercises: {
         orderBy: { order: 'asc' },
-        include: { exercise: { select: { id: true, name: true, equipment: true, usesLoad: true } } },
+        include: { exercise: { select: { id: true, name: true, equipment: true, usesLoad: true, tracking: true, usesDistance: true } } },
       },
     },
   })
@@ -39,7 +39,7 @@ async function WorkoutPage({
       orderBy: [{ session: { performedAt: 'desc' } }, { setNumber: 'asc' }],
       select: {
         exerciseId: true, sessionId: true, setNumber: true,
-        reps: true, weight: true, rpe: true,
+        reps: true, durationSeconds: true, distanceKm: true, weight: true, rpe: true,
       },
       take: 300,
     })
@@ -68,11 +68,16 @@ async function WorkoutPage({
       name: item.exercise.name,
       equipment: item.exercise.equipment,
       usesLoad: item.exercise.usesLoad,
+      tracking: item.exercise.tracking,
+      usesDistance: item.exercise.usesDistance,
       prescribedSets: item.sets,
       prescribedReps: item.reps,
+      prescribedDuration: item.durationSeconds,
       targetWeight: item.targetWeight,
       previousSets: previous.map((log) => ({
         reps: log.reps,
+        durationSeconds: log.durationSeconds,
+        distanceKm: log.distanceKm,
         weight: log.weight,
         rpe: log.rpe,
       })),

@@ -8,40 +8,68 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { formatNumber } from '@/lib/workout'
+import { formatDuration, formatNumber, formatPrescription } from '@/lib/workout'
 import { cn } from '@/lib/utils'
 import type { SetRow, WorkoutExercise } from './types'
 
 /**
- * Resume as séries em uma linha curta: só a primeira e a última, e apenas
- * uma delas quando são iguais. Listar todas estourava a largura no celular
- * ("4 séries · 42,5kg×8 · 42,5kg×8 · 42,5kg×8 · 40kg×6" quebrava em duas
- * linhas), e as do meio repetem o que a primeira já disse — o que interessa
- * é onde começou e onde terminou.
- *
- *   iguais    → "42,5kg×8"
- *   diferentes→ "42,5kg×8 → 40kg×6"
- *   sem carga → "12 → 10 reps"
- *
- * Devolve null quando não há série preenchida.
+ * Forma normalizada para montar o resumo. Serve tanto para a linha em edicao
+ * (SetRow, tudo string) quanto para o historico vindo do banco (numeros e
+ * nulos), sem cada chamada ter que saber converter.
  */
-export function formatSets(
-  sets: { weight: number | string; reps: number | string }[],
-  usesLoad: boolean,
-) {
-  const validas = sets.filter((set) => Number(set.reps) > 0)
+type SetLabel = { weight: number; reps: number; durationSeconds: number; distanceKm: number }
+
+export function fromRow(set: SetRow): SetLabel {
+  return {
+    weight: Number(set.weight) || 0,
+    reps: Number(set.reps) || 0,
+    durationSeconds: (Number(set.min) || 0) * 60 + (Number(set.sec) || 0),
+    distanceKm: Number(set.km) || 0,
+  }
+}
+
+export function fromLog(set: WorkoutExercise['previousSets'][number]): SetLabel {
+  return {
+    weight: set.weight,
+    reps: set.reps ?? 0,
+    durationSeconds: set.durationSeconds ?? 0,
+    distanceKm: set.distanceKm ?? 0,
+  }
+}
+
+/**
+ * Resume as series em uma linha curta: so a primeira e a ultima, e apenas
+ * uma delas quando sao iguais. Listar todas estourava a largura no celular
+ * ("4 series - 42,5kg-8 - 42,5kg-8 - 42,5kg-8 - 40kg-6" quebrava em duas
+ * linhas), e as do meio repetem o que a primeira ja disse: o que interessa
+ * e onde comecou e onde terminou.
+ *
+ *   iguais     -> "42,5kg×8"
+ *   diferentes -> "42,5kg×8 → 40kg×6"
+ *   sem carga  -> "12 → 10 reps"
+ *   duracao    -> "20:00 · 3,2km"
+ *
+ * Devolve null quando nao ha serie preenchida.
+ */
+export function formatSets(sets: SetLabel[], usesLoad: boolean, porDuracao: boolean) {
+  // Em exercicio por duracao, reps fica nulo: quem diz se a serie existe e o tempo
+  const validas = sets.filter((set) => (porDuracao ? set.durationSeconds : set.reps) > 0)
   if (!validas.length) return null
 
-  const primeira = validas[0]
-  const ultima = validas[validas.length - 1]
-  const rotulo = (set: { weight: number | string; reps: number | string }) =>
-    usesLoad ? `${formatNumber(Number(set.weight) || 0)}kg×${set.reps}` : `${set.reps}`
+  const rotulo = (set: SetLabel) => {
+    const medida = porDuracao ? formatDuration(set.durationSeconds) : String(set.reps)
+    const comDistancia = set.distanceKm > 0
+      ? `${medida} · ${formatNumber(set.distanceKm)}km`
+      : medida
+    return usesLoad ? `${formatNumber(set.weight)}kg×${comDistancia}` : comDistancia
+  }
 
-  const iguais = Number(primeira.weight) === Number(ultima.weight)
-    && Number(primeira.reps) === Number(ultima.reps)
+  const primeira = rotulo(validas[0])
+  const ultima = rotulo(validas[validas.length - 1])
+  const corpo = primeira === ultima ? primeira : `${primeira} → ${ultima}`
 
-  const corpo = iguais ? rotulo(primeira) : `${rotulo(primeira)} → ${rotulo(ultima)}`
-  return usesLoad ? corpo : `${corpo} reps`
+  // "12 -> 10" sozinho nao diz de que; com carga ou tempo a unidade ja aparece
+  return usesLoad || porDuracao ? corpo : `${corpo} reps`
 }
 
 function ExerciseCard({
@@ -64,12 +92,27 @@ function ExerciseCard({
     attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging,
   } = useSortable({ id: exerciseId })
 
-  // Sem carga, a coluna some e as demais reocupam a largura
-  const cols = exercise.usesLoad
-    ? 'grid grid-cols-[1.5rem_1fr_1fr_3.25rem_2.25rem] items-center gap-2'
-    : 'grid grid-cols-[1.5rem_1fr_3.25rem_2.25rem] items-center gap-2'
+  const porDuracao = exercise.tracking === 'duration'
 
-  const resumo = formatSets(sets, exercise.usesLoad)
+  /*
+    As colunas variam com o exercicio: quem nao usa carga nao ganha a coluna
+    de carga, quem e medido em tempo troca "Reps" por "Min"+"Seg", e so
+    esteira/bike e companhia ganham "Km". Vai em style porque a lista e
+    montada em tempo de execucao e o Tailwind so ve classes escritas no fonte.
+  */
+  const cols = 'grid items-center gap-2'
+  const colsStyle = {
+    gridTemplateColumns: [
+      '1.5rem',
+      ...(exercise.usesLoad ? ['1fr'] : []),
+      ...(porDuracao ? ['1fr', '1fr'] : ['1fr']),
+      ...(exercise.usesDistance ? ['1fr'] : []),
+      '3.25rem',
+      '2.25rem',
+    ].join(' '),
+  }
+
+  const resumo = formatSets(sets.map(fromRow), exercise.usesLoad, porDuracao)
 
   return (
     <Card
@@ -139,31 +182,37 @@ function ExerciseCard({
         {!isCollapsed && (
           <div className='flex flex-wrap items-center gap-x-2 gap-y-1 pl-7'>
             <Badge variant='secondary' className='tabular'>
-              {exercise.prescribedSets}×{exercise.prescribedReps}
-              {exercise.targetWeight !== null && ` · ${exercise.targetWeight}kg`}
+              {formatPrescription({
+                sets: exercise.prescribedSets,
+                reps: exercise.prescribedReps,
+                durationSeconds: exercise.prescribedDuration,
+                targetWeight: exercise.targetWeight,
+              })}
             </Badge>
           </div>
         )}
 
         {!isCollapsed && exercise.previousSets.length > 0 && (
           <p className='pl-7 text-xs text-muted-foreground'>
-            Última vez: {formatSets(exercise.previousSets, exercise.usesLoad)}
+            Última vez: {formatSets(exercise.previousSets.map(fromLog), exercise.usesLoad, porDuracao)}
           </p>
         )}
       </CardHeader>
 
       <CardContent className={isCollapsed ? 'hidden' : 'p-3 pt-0'}>
-        <div className={`${cols} px-0.5 pb-1 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground`}>
+        <div style={colsStyle}
+          className={`${cols} px-0.5 pb-1 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground`}>
           <span>#</span>
           {exercise.usesLoad && <span>Carga</span>}
-          <span>Reps</span>
+          {porDuracao ? <><span>Min</span><span>Seg</span></> : <span>Reps</span>}
+          {exercise.usesDistance && <span>Km</span>}
           <span>RPE</span>
           <span className='sr-only'>Remover</span>
         </div>
 
         <div className='space-y-2'>
           {sets.map((set, index) => (
-            <div key={index} className={cols}>
+            <div key={index} className={cols} style={colsStyle}>
               <span className='text-sm tabular text-muted-foreground'>{index + 1}</span>
               {exercise.usesLoad && (
                 <Input type='number' min={0} step='0.5' inputMode='decimal' placeholder='0'
@@ -172,11 +221,33 @@ function ExerciseCard({
                   onChange={(event) => onUpdateSet(exerciseId, index, 'weight', event.target.value)}
                   className='h-11 text-center tabular text-base' />
               )}
-              <Input type='number' min={0} inputMode='numeric' placeholder='0'
-                aria-label={`Repetições da série ${index + 1} de ${exercise.name}`}
-                value={set.reps}
-                onChange={(event) => onUpdateSet(exerciseId, index, 'reps', event.target.value)}
-                className='h-11 text-center tabular text-base' />
+              {porDuracao ? (
+                <>
+                  <Input type='number' min={0} inputMode='numeric' placeholder='0'
+                    aria-label={`Minutos da série ${index + 1} de ${exercise.name}`}
+                    value={set.min}
+                    onChange={(event) => onUpdateSet(exerciseId, index, 'min', event.target.value)}
+                    className='h-11 text-center tabular text-base' />
+                  <Input type='number' min={0} max={59} inputMode='numeric' placeholder='0'
+                    aria-label={`Segundos da série ${index + 1} de ${exercise.name}`}
+                    value={set.sec}
+                    onChange={(event) => onUpdateSet(exerciseId, index, 'sec', event.target.value)}
+                    className='h-11 text-center tabular text-base' />
+                </>
+              ) : (
+                <Input type='number' min={0} inputMode='numeric' placeholder='0'
+                  aria-label={`Repetições da série ${index + 1} de ${exercise.name}`}
+                  value={set.reps}
+                  onChange={(event) => onUpdateSet(exerciseId, index, 'reps', event.target.value)}
+                  className='h-11 text-center tabular text-base' />
+              )}
+              {exercise.usesDistance && (
+                <Input type='number' min={0} step='0.1' inputMode='decimal' placeholder='0'
+                  aria-label={`Distância da série ${index + 1} de ${exercise.name}`}
+                  value={set.km}
+                  onChange={(event) => onUpdateSet(exerciseId, index, 'km', event.target.value)}
+                  className='h-11 text-center tabular text-base' />
+              )}
               <Input type='number' min={1} max={10} inputMode='numeric' placeholder='—'
                 aria-label={`Esforço percebido da série ${index + 1} de ${exercise.name}`}
                 value={set.rpe}

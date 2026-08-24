@@ -17,6 +17,7 @@ Construído com Next.js (App Router), autenticação via Clerk e persistência e
 ### Catálogo de exercícios
 - **88 exercícios pré-cadastrados** pelo seed, em 10 grupos musculares (peito, costas, pernas, glúteos, ombros, bíceps, tríceps, antebraço, core, cardio), cada um com equipamento e nível (iniciante/intermediário/avançado).
 - Cada exercício tem **página própria** em `/exercises/[id]`: como executar, músculos trabalhados (do principal para os auxiliares), nível, equipamento e o seu histórico naquele movimento — sessões, recorde, última vez e a **curva de progressão**. Dá para chegar nela clicando no exercício dentro da ficha, no detalhe de uma sessão ou pelo catálogo. O recorde respeita a carga: kg para quem usa, repetições para peso corporal.
+- **A unidade é propriedade do exercício** (`tracking`): 79 exercícios são medidos em repetições e 9 em tempo (os 7 de cardio mais prancha isométrica e prancha lateral). Nos de tempo, a ficha e a execução pedem **min e seg** no lugar de reps, e a progressão é medida em tempo, não em repetições. Esteira, bicicleta, elíptico e remo ainda aceitam **distância em km** (`usesDistance`), que é opcional.
 - **Carga é propriedade do exercício** (`usesLoad`): 62 usam carga externa, 26 não (peso corporal e cardio). Nos que não usam, o campo de carga nem aparece — carga ali é "não se aplica", não zero. A variante com peso é outro item do catálogo: *Agachamento livre sem peso* e *Agachamento livre* (barra) são exercícios distintos.
 - O catálogo é global (`userId` nulo); a mesma tabela aceita exercícios personalizados por usuário.
 - É o que torna a comparação de evolução possível: "Rosca direta" é sempre a mesma entidade, em vez de texto livre digitado de formas diferentes.
@@ -38,7 +39,7 @@ Construído com Next.js (App Router), autenticação via Clerk e persistência e
 
 ### Histórico
 - `/history` lista as sessões com data, número de exercícios e séries. O detalhe acrescenta o **esforço médio** (RPE) da sessão. Não há volume somado: quilos de exercícios diferentes não se somam em nada legível — 14 t de perna e 3 t de peito não são comparáveis, e nenhum dos dois diz se o treino foi bom.
-- `/history/[sessionId]` mostra o detalhe série a série, com carga, reps e RPE.
+- `/history/[sessionId]` mostra o detalhe série a série. As colunas seguem o exercício: carga e reps na musculação, tempo (e km, quando houver) no cardio.
 - Excluir uma sessão não afeta a ficha.
 
 ### Home: calendário
@@ -47,7 +48,7 @@ Construído com Next.js (App Router), autenticação via Clerk e persistência e
 - Últimas atividades e as fichas cadastradas.
 
 ### Perfil: evolução
-- **Progressão por exercício**, com seletor, recorde e variação desde o primeiro registro. Exercício com carga progride em **kg**; peso corporal e cardio progridem em **repetições**.
+- **Progressão por exercício**, com seletor, recorde e variação desde o primeiro registro. Exercício com carga progride em **kg**; peso corporal progride em **repetições**; cardio e isométricos progridem em **tempo**.
 - **Frequência** por semana nas últimas 12 semanas (semanas sem treino aparecem como zero, para o gráfico não mentir).
 - Atalhos para o catálogo de exercícios e as configurações.
 
@@ -88,7 +89,6 @@ Limitações conhecidas:
 | Item | Situação |
 |---|---|
 | Descanso entre séries | Não há cronômetro nem registro do tempo de descanso. |
-| Exercícios isométricos | Prancha e similares são gravados em `reps`, mas na prática a medida é tempo. O schema não tem noção de duração, então 3×45 ali significa 45 segundos por convenção, não por modelo. |
 | Descrições dos exercícios | Escritas com base em prática comum de academia, sem revisão de profissional de educação física. Servem de referência, não de prescrição. |
 | Metas e periodização | Não há definição de meta de carga nem sugestão automática de progressão. |
 | Medidas corporais | Só treino é registrado — sem peso corporal, medidas ou fotos. |
@@ -243,9 +243,9 @@ src/
 - **User** — espelha o usuário do Clerk (o `id` é o ID do Clerk).
 - **Exercise** — catálogo. `userId` nulo = global; preenchido = personalizado. `usesLoad` diz se usa carga externa; `description` e `muscles` alimentam a página do exercício.
 - **Training** — a ficha de um dia da semana. Único por `[userId, trainingDay]`.
-- **TrainingExercise** — a prescrição: qual exercício, quantas séries/reps, carga alvo.
+- **TrainingExercise** — a prescrição: qual exercício, quantas séries, e `reps` **ou** `durationSeconds` conforme o `tracking` do exercício (nunca os dois), mais a carga alvo.
 - **WorkoutSession** — uma sessão realizada, com data e snapshot do nome da ficha.
-- **SetLog** — uma linha por série executada: carga, reps e RPE.
+- **SetLog** — uma linha por série executada: carga, RPE, e `reps` **ou** `durationSeconds` (mais `distanceKm`, opcional, no cardio de esteira/bike/elíptico/remo).
 
 ### Migrations
 

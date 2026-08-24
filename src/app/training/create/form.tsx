@@ -31,6 +31,7 @@ import { TrainingFormSchema, type FormTrainingType } from '@/actions/training/_s
 import { TRAINING_DAYS } from '@/lib/training-day'
 import { groupByMuscle, type ExerciseOption } from '@/lib/exercise'
 import { Picker, type PickerGroup } from '@/components/picker'
+import { splitDuration } from '@/lib/workout'
 
 /**
  * Casca arrastavel da linha. Existe como componente porque useSortable e um
@@ -60,7 +61,9 @@ function SortableRow({ id, children }: {
   )
 }
 
-const emptyExercise = { exerciseId: '', reps: '', sets: '', targetWeight: '' }
+const emptyExercise = {
+  exerciseId: '', sets: '', reps: '', durationMin: '', durationSec: '', targetWeight: '',
+}
 
 export type TTraining = {
   label: string
@@ -68,7 +71,8 @@ export type TTraining = {
   exercises: {
     exerciseId: string
     sets: number
-    reps: number
+    reps: number | null
+    durationSeconds: number | null
     targetWeight: number | null
   }[]
 }
@@ -82,9 +86,10 @@ function FormTrining({ idTraining, initialData, exercises, takenDays = [] }: {
   const router = useRouter()
   const [isPending, startTransition] = React.useTransition()
 
-  // Carga so aparece para exercicio que usa carga externa
-  const usesLoadById = React.useMemo(
-    () => new Map(exercises.map((exercise) => [exercise.id, exercise.usesLoad])),
+  // A linha muda conforme o exercicio: carga so para quem usa carga externa,
+  // e min/seg no lugar de reps para quem e medido em tempo.
+  const infoById = React.useMemo(
+    () => new Map(exercises.map((exercise) => [exercise.id, exercise])),
     [exercises],
   )
 
@@ -113,12 +118,17 @@ function FormTrining({ idTraining, initialData, exercises, takenDays = [] }: {
     ? {
       label: initialData.label,
       trainingDay: initialData.trainingDay,
-      exercises: initialData.exercises.map((exercise) => ({
-        exerciseId: exercise.exerciseId,
-        reps: String(exercise.reps),
-        sets: String(exercise.sets),
-        targetWeight: exercise.targetWeight === null ? '' : String(exercise.targetWeight),
-      })),
+      exercises: initialData.exercises.map((exercise) => {
+        const duracao = splitDuration(exercise.durationSeconds)
+        return {
+          exerciseId: exercise.exerciseId,
+          sets: String(exercise.sets),
+          reps: exercise.reps === null ? '' : String(exercise.reps),
+          durationMin: duracao.min,
+          durationSec: duracao.sec,
+          targetWeight: exercise.targetWeight === null ? '' : String(exercise.targetWeight),
+        }
+      }),
     }
     : { label: '', trainingDay: '', exercises: [emptyExercise] }
 
@@ -226,8 +236,10 @@ function FormTrining({ idTraining, initialData, exercises, takenDays = [] }: {
             strategy={verticalListSortingStrategy}>
           {fields.map((field, index) => {
             const selectedId = watchedExercises?.[index]?.exerciseId
-            // Enquanto nada foi escolhido, mostra a carga: a maioria usa
-            const showLoad = !selectedId || usesLoadById.get(selectedId) !== false
+            const info = selectedId ? infoById.get(selectedId) : undefined
+            // Enquanto nada foi escolhido, mostra carga e reps: a maioria usa
+            const showLoad = !info || info.usesLoad
+            const porDuracao = info?.tracking === 'duration'
 
             return (
             <SortableRow key={field.id} id={field.id}>
@@ -274,7 +286,9 @@ function FormTrining({ idTraining, initialData, exercises, takenDays = [] }: {
                   )}
                 />
 
-                <div className={showLoad ? 'grid grid-cols-3 gap-2' : 'grid grid-cols-2 gap-2'}>
+                <div className={`grid gap-2 ${porDuracao
+                  ? (showLoad ? 'grid-cols-4' : 'grid-cols-3')
+                  : (showLoad ? 'grid-cols-3' : 'grid-cols-2')}`}>
                   <FormField control={form.control}
                     name={`exercises.${index}.sets`}
                     render={({ field: setsField }) => (
@@ -288,19 +302,53 @@ function FormTrining({ idTraining, initialData, exercises, takenDays = [] }: {
                       </FormItem>
                     )}
                   />
-                  <FormField control={form.control}
-                    name={`exercises.${index}.reps`}
-                    render={({ field: repsField }) => (
-                      <FormItem>
-                        <FormLabel className='text-xs text-muted-foreground'>
-                          Reps
-                        </FormLabel>
-                        <Input type='number' min={1} inputMode='numeric'
-                          {...repsField} className='h-11 text-center tabular' />
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {porDuracao ? (
+                    <>
+                      <FormField control={form.control}
+                        name={`exercises.${index}.durationMin`}
+                        render={({ field: minField }) => (
+                          <FormItem>
+                            <FormLabel className='text-xs text-muted-foreground'>
+                              Min
+                            </FormLabel>
+                            <Input type='number' min={0} inputMode='numeric' placeholder='0'
+                              {...minField} value={minField.value ?? ''}
+                              className='h-11 text-center tabular' />
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField control={form.control}
+                        name={`exercises.${index}.durationSec`}
+                        render={({ field: secField }) => (
+                          <FormItem>
+                            <FormLabel className='text-xs text-muted-foreground'>
+                              Seg
+                            </FormLabel>
+                            <Input type='number' min={0} max={59} inputMode='numeric' placeholder='0'
+                              {...secField} value={secField.value ?? ''}
+                              className='h-11 text-center tabular' />
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </>
+                  ) : (
+                    <FormField control={form.control}
+                      name={`exercises.${index}.reps`}
+                      render={({ field: repsField }) => (
+                        <FormItem>
+                          <FormLabel className='text-xs text-muted-foreground'>
+                            Reps
+                          </FormLabel>
+                          <Input type='number' min={1} inputMode='numeric'
+                            {...repsField} value={repsField.value ?? ''}
+                            className='h-11 text-center tabular' />
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                   {showLoad && (
                     <FormField control={form.control}
                       name={`exercises.${index}.targetWeight`}

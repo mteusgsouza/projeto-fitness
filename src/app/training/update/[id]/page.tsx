@@ -46,6 +46,7 @@ async function UpdatePage({
             exerciseId: exercise.exerciseId,
             sets: exercise.sets,
             reps: exercise.reps,
+            durationSeconds: exercise.durationSeconds,
             targetWeight: exercise.targetWeight,
           })),
         }} />

@@ -4,7 +4,7 @@ import { format } from 'date-fns'
 import { notFound } from 'next/navigation'
 import { currentUser } from '@clerk/nextjs/server'
 import prisma from '@/lib/db'
-import { formatSessionDate } from '@/lib/workout'
+import { formatDuration, formatNumber, formatSessionDate } from '@/lib/workout'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
@@ -31,18 +31,37 @@ async function SessionDetailPage({
     include: {
       setLogs: {
         orderBy: { setNumber: 'asc' },
-        include: { exercise: { select: { id: true, name: true } } },
+        include: {
+          exercise: {
+            select: { id: true, name: true, usesLoad: true, tracking: true, usesDistance: true },
+          },
+        },
       },
     },
   })
   if (!session) notFound()
 
   // Agrupa as séries por exercício preservando a ordem em que foram gravadas.
-  const byExercise = new Map<string, { id: string; name: string; sets: typeof session.setLogs }>()
+  type Grupo = {
+    id: string
+    name: string
+    usesLoad: boolean
+    porDuracao: boolean
+    usesDistance: boolean
+    sets: typeof session.setLogs
+  }
+  const byExercise = new Map<string, Grupo>()
   for (const log of session.setLogs) {
     const current = byExercise.get(log.exerciseId)
     if (current) current.sets.push(log)
-    else byExercise.set(log.exerciseId, { id: log.exerciseId, name: log.exercise.name, sets: [log] })
+    else byExercise.set(log.exerciseId, {
+      id: log.exerciseId,
+      name: log.exercise.name,
+      usesLoad: log.exercise.usesLoad,
+      porDuracao: log.exercise.tracking === 'duration',
+      usesDistance: log.exercise.usesDistance,
+      sets: [log],
+    })
   }
   const exercises = [...byExercise.values()]
 
@@ -85,6 +104,23 @@ async function SessionDetailPage({
       <div className='space-y-3'>
         {exercises.map((exercise) => {
           const heaviest = Math.max(...exercise.sets.map((set) => set.weight))
+          // Distancia so ganha coluna quando foi de fato registrada
+          const comKm = exercise.usesDistance
+            && exercise.sets.some((set) => (set.distanceKm ?? 0) > 0)
+          /*
+            As colunas seguem o exercicio, como na tela de execucao: cardio
+            mostra tempo (e km), musculacao mostra carga e reps. Vai em style
+            porque a lista e montada em tempo de execucao.
+          */
+          const colsStyle = {
+            gridTemplateColumns: [
+              '2.75rem',
+              ...(exercise.usesLoad ? ['1fr'] : []),
+              '1fr',
+              ...(comKm ? ['1fr'] : []),
+              '2.5rem',
+            ].join(' '),
+          }
           return (
             <Card key={exercise.name}>
               <CardHeader className='p-3 pb-2'>
@@ -97,26 +133,37 @@ async function SessionDetailPage({
                   </CardTitle>
                   {heaviest > 0 && (
                     <Badge variant='secondary' className='shrink-0 tabular'>
-                      máx {heaviest}kg
+                      máx {formatNumber(heaviest)}kg
                     </Badge>
                   )}
                 </div>
               </CardHeader>
               <CardContent className='p-3 pt-0'>
-                <div className='grid grid-cols-4 gap-2 pb-1 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground'>
+                <div style={colsStyle}
+                  className='grid gap-2 pb-1 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground'>
                   <span>Série</span>
-                  <span>Carga</span>
-                  <span>Reps</span>
+                  {exercise.usesLoad && <span>Carga</span>}
+                  <span>{exercise.porDuracao ? 'Tempo' : 'Reps'}</span>
+                  {comKm && <span>Km</span>}
                   <span>RPE</span>
                 </div>
                 {exercise.sets.map((set) => (
-                  <div key={set.id}
-                    className='grid grid-cols-4 gap-2 border-b border-border py-2 text-sm tabular last:border-b-0'>
+                  <div key={set.id} style={colsStyle}
+                    className='grid gap-2 border-b border-border py-2 text-sm tabular last:border-b-0'>
                     <span className='text-muted-foreground'>{set.setNumber}</span>
-                    <span className={set.weight === heaviest && heaviest > 0 ? 'font-semibold' : ''}>
-                      {set.weight > 0 ? `${set.weight} kg` : '—'}
+                    {exercise.usesLoad && (
+                      <span className={set.weight === heaviest && heaviest > 0 ? 'font-semibold' : ''}>
+                        {set.weight > 0 ? `${formatNumber(set.weight)} kg` : '—'}
+                      </span>
+                    )}
+                    <span>
+                      {exercise.porDuracao
+                        ? (set.durationSeconds ? formatDuration(set.durationSeconds) : '—')
+                        : (set.reps ?? '—')}
                     </span>
-                    <span>{set.reps}</span>
+                    {comKm && (
+                      <span>{set.distanceKm ? `${formatNumber(set.distanceKm)}` : '—'}</span>
+                    )}
                     <span className='text-muted-foreground'>{set.rpe ?? '—'}</span>
                   </div>
                 ))}

@@ -6,6 +6,10 @@ export type ExerciseOption = {
   level: string
   /** Falso para peso corporal e cardio: carga não se aplica, não é zero. */
   usesLoad: boolean
+  /** "reps" ou "duration" — em que unidade o exercício é medido. */
+  tracking: string
+  /** Se faz sentido registrar distância (esteira, bike, elíptico, remo). */
+  usesDistance: boolean
   userId: string | null
 }
 

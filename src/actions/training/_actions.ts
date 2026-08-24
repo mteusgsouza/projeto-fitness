@@ -29,27 +29,47 @@ async function loadUsage(formData: FormTrainingType, userId: string) {
   const ids = [...new Set(formData.exercises.map((exercise) => exercise.exerciseId))]
   const found = await prisma.exercise.findMany({
     where: { id: { in: ids }, OR: [{ userId: null }, { userId }] },
-    select: { id: true, usesLoad: true },
+    select: { id: true, name: true, usesLoad: true, tracking: true },
   })
   if (found.length !== ids.length) return null
-  return new Map(found.map((exercise) => [exercise.id, exercise.usesLoad]))
+  return new Map(found.map((exercise) => [exercise.id, exercise]))
 }
 
+type Usage = Map<string, { name: string; usesLoad: boolean; tracking: string }>
+
 /**
- * Zera a carga alvo de exercicio que nao usa carga externa. A interface ja
- * esconde o campo, mas trocar o exercicio de uma linha podia deixar para tras
- * o valor do anterior — carga em peso corporal nao e zero, e "nao se aplica".
+ * Monta a prescricao respeitando como o exercicio e medido.
+ *
+ * - carga alvo some em quem nao usa carga: a interface ja esconde o campo,
+ *   mas trocar o exercicio de uma linha podia deixar o valor do anterior
+ * - reps e duracao sao mutuamente exclusivos, conforme o tracking. Guardar
+ *   os dois deixaria o dado ambiguo.
+ *
+ * Devolve o nome do exercicio que faltou preencher, se houver.
  */
-function toPrescription(formData: FormTrainingType, usage: Map<string, boolean>) {
-  return formData.exercises.map((exercise, index) => ({
-    exerciseId: exercise.exerciseId,
-    order: index,
-    sets: Number(exercise.sets),
-    reps: Number(exercise.reps),
-    targetWeight: usage.get(exercise.exerciseId) === false
-      ? null
-      : toNumberOrNull(exercise.targetWeight),
-  }))
+function toPrescription(formData: FormTrainingType, usage: Usage) {
+  const faltando: string[] = []
+
+  const linhas = formData.exercises.map((exercise, index) => {
+    const info = usage.get(exercise.exerciseId)!
+    const porDuracao = info.tracking === 'duration'
+    const duracao = (Number(exercise.durationMin) || 0) * 60 + (Number(exercise.durationSec) || 0)
+    const reps = Number(exercise.reps) || 0
+
+    if (porDuracao && duracao <= 0) faltando.push(info.name)
+    if (!porDuracao && reps <= 0) faltando.push(info.name)
+
+    return {
+      exerciseId: exercise.exerciseId,
+      order: index,
+      sets: Number(exercise.sets),
+      reps: porDuracao ? null : reps,
+      durationSeconds: porDuracao ? duracao : null,
+      targetWeight: info.usesLoad ? toNumberOrNull(exercise.targetWeight) : null,
+    }
+  })
+
+  return { linhas, faltando }
 }
 
 function revalidateAll() {
@@ -79,12 +99,20 @@ export async function createTraining(formData: FormTrainingType): Promise<Action
   const usage = await loadUsage(formData, user.id)
   if (!usage) return { ok: false, message: 'Algum exercício não pertence ao seu catálogo' }
 
+  const prescricao = toPrescription(formData, usage)
+  if (prescricao.faltando.length) {
+    return {
+      ok: false,
+      message: `Preencha séries e ${prescricao.faltando.length === 1 ? 'a medida' : 'as medidas'} de: ${[...new Set(prescricao.faltando)].join(', ')}`,
+    }
+  }
+
   await prisma.training.create({
     data: {
       userId: user.id,
       label: formData.label,
       trainingDay: formData.trainingDay,
-      exercises: { createMany: { data: toPrescription(formData, usage) } },
+      exercises: { createMany: { data: prescricao.linhas } },
     },
   })
 
@@ -118,6 +146,14 @@ export async function updateTraining(id: string, formData: FormTrainingType): Pr
 
   // Recriar a prescrição é seguro: o histórico de execução vive em SetLog e
   // aponta para Exercise, não para estas linhas.
+  const prescricao = toPrescription(formData, usage)
+  if (prescricao.faltando.length) {
+    return {
+      ok: false,
+      message: `Preencha séries e ${prescricao.faltando.length === 1 ? 'a medida' : 'as medidas'} de: ${[...new Set(prescricao.faltando)].join(', ')}`,
+    }
+  }
+
   await prisma.$transaction([
     prisma.trainingExercise.deleteMany({ where: { trainingId: id } }),
     prisma.training.update({
@@ -125,7 +161,7 @@ export async function updateTraining(id: string, formData: FormTrainingType): Pr
       data: {
         label: formData.label,
         trainingDay: formData.trainingDay,
-        exercises: { createMany: { data: toPrescription(formData, usage) } },
+        exercises: { createMany: { data: prescricao.linhas } },
       },
     }),
   ])

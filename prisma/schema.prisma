@@ -36,6 +36,13 @@ model Exercise {
   /// peso é outro item do catálogo (agachamento livre vs. agachamento com barra).
   /// Governa o campo de carga nos formulários e quem entra na progressão de peso.
   usesLoad    Boolean @default(true)
+  /// Em que unidade o exercicio e medido: "reps" ou "duration".
+  /// Nao da para deduzir do grupo muscular — burpee e cardio mas conta
+  /// repeticao, e prancha e core mas conta tempo.
+  tracking    String  @default("reps")
+  /// Se faz sentido registrar distancia (esteira, bike, eliptico, remo).
+  /// Corda naval e prancha tem duracao mas nao tem distancia.
+  usesDistance Boolean @default(false)
   /// Como executar, em uma ou duas frases.
   description String?
   /// Musculos efetivamente trabalhados, do principal para os auxiliares.
@@ -82,7 +89,11 @@ model TrainingExercise {
   exercise     Exercise @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
   order        Int
   sets         Int
-  reps         Int
+  /// Preenchido quando tracking = "reps"; nulo quando e por duracao.
+  reps         Int?
+  /// Preenchido quando tracking = "duration". Segundos, para cobrir tanto
+  /// prancha de 45s quanto esteira de 30min sem casa decimal.
+  durationSeconds Int?
   targetWeight Float?
 
   updatedAt DateTime @updatedAt
@@ -124,7 +135,11 @@ model SetLog {
   exerciseId String
   exercise   Exercise       @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
   setNumber  Int
-  reps       Int
+  /// Exatamente um destes vem preenchido, conforme Exercise.tracking
+  reps       Int?
+  durationSeconds Int?
+  /// Quilometros, so para exercicio com usesDistance
+  distanceKm Float?
   /// kg; 0 para exercícios de peso corporal
   weight     Float
   /// esforço percebido, 1 a 10

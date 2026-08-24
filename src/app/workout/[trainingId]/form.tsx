@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { joinDuration, splitDuration } from '@/lib/workout'
 import ExerciseCard from './exercise-card'
 import type { SetRow, WorkoutExercise } from './types'
 import {
@@ -41,14 +42,24 @@ function toLocalInputValue(date: Date) {
 /** Pré-preenche com a última sessão; sem histórico, cai na prescrição da ficha. */
 function initialSets(exercise: WorkoutExercise): SetRow[] {
   if (exercise.previousSets.length) {
-    return exercise.previousSets.map((set) => ({
-      reps: String(set.reps),
-      weight: String(set.weight),
-      rpe: set.rpe === null ? '' : String(set.rpe),
-    }))
+    return exercise.previousSets.map((set) => {
+      const duracao = splitDuration(set.durationSeconds)
+      return {
+        reps: set.reps === null ? '' : String(set.reps),
+        min: duracao.min,
+        sec: duracao.sec,
+        km: set.distanceKm === null ? '' : String(set.distanceKm),
+        weight: String(set.weight),
+        rpe: set.rpe === null ? '' : String(set.rpe),
+      }
+    })
   }
+  const prescrito = splitDuration(exercise.prescribedDuration)
   return Array.from({ length: Math.max(1, exercise.prescribedSets) }, () => ({
-    reps: String(exercise.prescribedReps),
+    reps: exercise.prescribedReps === null ? '' : String(exercise.prescribedReps),
+    min: prescrito.min,
+    sec: prescrito.sec,
+    km: '',
     weight: exercise.targetWeight === null ? '' : String(exercise.targetWeight),
     rpe: '',
   }))
@@ -139,7 +150,8 @@ function WorkoutForm({ trainingId, exercises }: {
   function addSet(exerciseId: string) {
     setRows((current) => {
       const sets = current[exerciseId]
-      const last = sets[sets.length - 1] ?? { reps: '', weight: '', rpe: '' }
+      const last = sets[sets.length - 1]
+        ?? { reps: '', min: '', sec: '', km: '', weight: '', rpe: '' }
       return { ...current, [exerciseId]: [...sets, { ...last, rpe: '' }] }
     })
   }
@@ -151,24 +163,42 @@ function WorkoutForm({ trainingId, exercises }: {
     }))
   }
 
+  /**
+   * Uma série só existe se a medida do exercício estiver preenchida — tempo
+   * em cardio e isometria, repetições no resto. Antes isso era sempre
+   * `reps > 0`, o que descartaria os 20 minutos de esteira inteiros.
+   */
+  function medida(exercise: WorkoutExercise, set: SetRow) {
+    return exercise.tracking === 'duration'
+      ? (joinDuration(set.min, set.sec) ?? 0) > 0
+      : Number(set.reps) > 0
+  }
+
   // So o que foi marcado conta: e isso que o botao Finalizar promete gravar
   const totalSets = feitos
-    .flatMap((id) => rows[id] ?? [])
-    .filter((set) => Number(set.reps) > 0).length
+    .map((id) => byId.get(id)!)
+    .flatMap((exercise) => (rows[exercise.exerciseId] ?? []).filter((set) => medida(exercise, set)))
+    .length
 
   /** So o marcado vira registro; a ordem e a da tela, nao a da ficha. */
   function buildEntries() {
-    return feitos.map((id) => byId.get(id)!).map((exercise) => ({
-      exerciseId: exercise.exerciseId,
-      sets: (rows[exercise.exerciseId] ?? [])
-        .map((set) => ({
-          reps: Number(set.reps),
-          weight: set.weight === '' ? 0 : Number(set.weight),
-          rpe: set.rpe === '' ? null : Number(set.rpe),
-        }))
+    return feitos.map((id) => byId.get(id)!).map((exercise) => {
+      const porDuracao = exercise.tracking === 'duration'
+      return {
+        exerciseId: exercise.exerciseId,
         // Séries em branco são simplesmente ignoradas
-        .filter((set) => Number.isFinite(set.reps) && set.reps > 0),
-    })).filter((entry) => entry.sets.length > 0)
+        sets: (rows[exercise.exerciseId] ?? [])
+          .filter((set) => medida(exercise, set))
+          .map((set) => ({
+            // reps e duração são exclusivos: guardar os dois deixaria ambíguo
+            reps: porDuracao ? null : Number(set.reps),
+            durationSeconds: porDuracao ? joinDuration(set.min, set.sec) : null,
+            distanceKm: exercise.usesDistance && Number(set.km) > 0 ? Number(set.km) : null,
+            weight: set.weight === '' ? 0 : Number(set.weight),
+            rpe: set.rpe === '' ? null : Number(set.rpe),
+          })),
+      }
+    }).filter((entry) => entry.sets.length > 0)
   }
 
   function handleSubmit(event: React.FormEvent) {

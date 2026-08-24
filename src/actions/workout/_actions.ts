@@ -8,10 +8,19 @@ import { z } from 'zod'
 
 type ActionResult = { ok: boolean; message: string; sessionId?: string }
 
+/**
+ * Repeticoes e duracao sao exclusivas: exercicio por tempo (esteira, prancha)
+ * grava durationSeconds e deixa reps nulo. O refine impede a serie vazia, que
+ * nao teria medida nenhuma.
+ */
 const SetSchema = z.object({
-  reps: z.number().int().positive(),
+  reps: z.number().int().positive().nullable().default(null),
+  durationSeconds: z.number().int().positive().nullable().default(null),
+  distanceKm: z.number().positive().nullable().default(null),
   weight: z.number().min(0),
   rpe: z.number().int().min(1).max(10).nullable(),
+}).refine((set) => set.reps !== null || set.durationSeconds !== null, {
+  message: 'A série precisa ter repetições ou duração',
 })
 
 const SessionSchema = z.object({
@@ -55,6 +64,8 @@ export async function createWorkoutSession(input: SessionInput): Promise<ActionR
       exerciseId: entry.exerciseId,
       setNumber: index + 1,
       reps: set.reps,
+      durationSeconds: set.durationSeconds,
+      distanceKm: set.distanceKm,
       weight: set.weight,
       rpe: set.rpe,
     }))
