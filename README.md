@@ -32,6 +32,7 @@ Construído com Next.js (App Router), autenticação via Clerk e persistência e
 - Os campos vêm **pré-preenchidos com a última sessão** daquele exercício — ou com a prescrição da ficha, se for a primeira vez.
 - A prescrição é valor inicial, não trava: dá para mudar a carga só da última série, adicionar séries além do previsto ou parar antes.
 - Cada exercício **recolhe e expande**, e dá para **reordenar** a execução com as setas. Recolher tudo deixa a lista curta o bastante para reordenar sem rolar a tela. A ordem vale só para a sessão: a ficha não muda.
+- **Só o que você marcar como feito é gravado.** Tudo começa desmarcado, e você marca conforme executa — o cabeçalho mostra "3 de 6 exercícios" com barra de progresso. Fez 5 de 6? Só os 5 entram na sessão, e um diálogo lista o que ficará de fora antes de gravar. Fez menos séries que o previsto? Remova as que não fez dentro do exercício.
 - Permite **lançamento retroativo** (data e hora editáveis) e observações.
 - Se a carga executada divergir da ficha, o app oferece atualizar a prescrição no fim da sessão.
 

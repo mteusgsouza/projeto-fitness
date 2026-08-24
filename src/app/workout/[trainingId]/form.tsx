@@ -10,6 +10,16 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 export type WorkoutExercise = {
   exerciseId: string
@@ -66,6 +76,15 @@ function WorkoutForm({ trainingId, exercises }: {
   const [order, setOrder] = React.useState(() => exercises.map((exercise) => exercise.exerciseId))
   const [collapsed, setCollapsed] = React.useState<Record<string, boolean>>({})
 
+  /**
+   * O que foi de fato executado. Comeca tudo desmarcado porque as series ja
+   * nascem pre-preenchidas com a ultima sessao: sem isso, "tem numero no campo"
+   * seria confundido com "foi feito", e o treino inteiro entrava no registro
+   * mesmo com exercicios pulados.
+   */
+  const [done, setDone] = React.useState<Record<string, boolean>>({})
+  const [confirmando, setConfirmando] = React.useState(false)
+
   const byId = React.useMemo(
     () => new Map(exercises.map((exercise) => [exercise.exerciseId, exercise])),
     [exercises],
@@ -93,6 +112,17 @@ function WorkoutForm({ trainingId, exercises }: {
     setCollapsed(allCollapsed ? {} : Object.fromEntries(order.map((id) => [id, true])))
   }
 
+  /** Marcar recolhe o card; desmarcar reabre. E o que transforma a lista no
+   *  resumo do que ainda falta conforme o treino avanca. */
+  function toggleDone(exerciseId: string) {
+    const marcando = !done[exerciseId]
+    setDone((current) => ({ ...current, [exerciseId]: marcando }))
+    setCollapsed((current) => ({ ...current, [exerciseId]: marcando }))
+  }
+
+  const feitos = order.filter((id) => done[id])
+  const pendentes = order.filter((id) => !done[id])
+
   function updateSet(exerciseId: string, index: number, field: keyof SetRow, value: string) {
     setRows((current) => {
       const sets = [...current[exerciseId]]
@@ -116,14 +146,14 @@ function WorkoutForm({ trainingId, exercises }: {
     }))
   }
 
-  const totalSets = Object.values(rows).flat()
+  // So o que foi marcado conta: e isso que o botao Finalizar promete gravar
+  const totalSets = feitos
+    .flatMap((id) => rows[id] ?? [])
     .filter((set) => Number(set.reps) > 0).length
 
-  function handleSubmit(event: React.FormEvent) {
-    event.preventDefault()
-
-    // Segue a ordem da tela, nao a da ficha
-    const entries = order.map((id) => byId.get(id)!).map((exercise) => ({
+  /** So o marcado vira registro; a ordem e a da tela, nao a da ficha. */
+  function buildEntries() {
+    return feitos.map((id) => byId.get(id)!).map((exercise) => ({
       exerciseId: exercise.exerciseId,
       sets: (rows[exercise.exerciseId] ?? [])
         .map((set) => ({
@@ -134,11 +164,28 @@ function WorkoutForm({ trainingId, exercises }: {
         // Séries em branco são simplesmente ignoradas
         .filter((set) => Number.isFinite(set.reps) && set.reps > 0),
     })).filter((entry) => entry.sets.length > 0)
+  }
 
-    if (!entries.length) {
-      toast.error('Preencha pelo menos uma série com repetições')
+  function handleSubmit(event: React.FormEvent) {
+    event.preventDefault()
+
+    if (!buildEntries().length) {
+      toast.error('Marque ao menos um exercício como feito')
       return
     }
+
+    // Descartar exercicio desmarcado sem avisar seria o mesmo silencio de
+    // antes, so que ao contrario. Com todos marcados, envia direto.
+    if (pendentes.length) {
+      setConfirmando(true)
+      return
+    }
+    enviar()
+  }
+
+  function enviar() {
+    setConfirmando(false)
+    const entries = buildEntries()
 
     startTransition(async () => {
       const result = await createWorkoutSession({
@@ -154,7 +201,7 @@ function WorkoutForm({ trainingId, exercises }: {
       }
 
       // Se a carga executada divergiu da ficha, oferece atualizar a prescrição.
-      const divergences = order.map((id) => byId.get(id)!).flatMap((exercise) => {
+      const divergences = feitos.map((id) => byId.get(id)!).flatMap((exercise) => {
         const entry = entries.find((item) => item.exerciseId === exercise.exerciseId)
         if (!entry) return []
         const heaviest = Math.max(...entry.sets.map((set) => set.weight))
@@ -185,15 +232,22 @@ function WorkoutForm({ trainingId, exercises }: {
 
   return (
     <form onSubmit={handleSubmit} className='space-y-3'>
-      {/* Recolher tudo deixa a lista curta o bastante para reordenar sem rolar */}
-      <div className='flex items-center justify-between gap-2'>
-        <span className='label-tec text-muted-foreground'>
-          {order.length} exercícios
-        </span>
-        <Button type='button' variant='outline' size='sm' onClick={toggleAll}>
-          <ListCollapse className='size-4' />
-          {allCollapsed ? 'Expandir tudo' : 'Recolher tudo'}
-        </Button>
+      {/* Progresso do treino + recolher tudo, que deixa a lista curta o
+          bastante para reordenar sem rolar a tela */}
+      <div className='space-y-2'>
+        <div className='flex items-center justify-between gap-2'>
+          <span className='label-tec text-muted-foreground'>
+            {feitos.length} de {order.length} exercícios
+          </span>
+          <Button type='button' variant='outline' size='sm' onClick={toggleAll}>
+            <ListCollapse className='size-4' />
+            {allCollapsed ? 'Expandir tudo' : 'Recolher tudo'}
+          </Button>
+        </div>
+        <div className='h-1.5 overflow-hidden rounded-full bg-muted'>
+          <div className='h-full rounded-full bg-primary transition-[width] duration-300'
+            style={{ width: `${order.length ? (feitos.length / order.length) * 100 : 0}%` }} />
+        </div>
       </div>
 
       {order.map((exerciseId, position) => {
@@ -201,18 +255,30 @@ function WorkoutForm({ trainingId, exercises }: {
         if (!exercise) return null
         const sets = rows[exerciseId] ?? []
         const isCollapsed = !!collapsed[exerciseId]
-        const feitas = sets.filter((set) => Number(set.reps) > 0).length
+        const isDone = !!done[exerciseId]
+        // Carga so entra no resumo quando e a mesma em todas as series
+        const cargas = new Set(sets.map((set) => set.weight).filter((peso) => peso !== ''))
+        const cargaUnica = exercise.usesLoad && cargas.size === 1 ? [...cargas][0] : null
         // Sem carga, a coluna some e as demais reocupam a largura
         const cols = exercise.usesLoad
           ? 'grid grid-cols-[1.5rem_1fr_1fr_3.25rem_2.25rem] items-center gap-2'
           : 'grid grid-cols-[1.5rem_1fr_3.25rem_2.25rem] items-center gap-2'
         return (
-          <Card key={exerciseId}>
+          <Card key={exerciseId} className={isDone ? 'border-primary/40' : undefined}>
             <CardHeader className='p-3 pb-2 space-y-1'>
               <div className='flex items-start gap-2'>
-                <span className='mt-0.5 w-5 shrink-0 text-sm tabular text-muted-foreground'>
-                  {position + 1}
-                </span>
+                <button type='button' onClick={() => toggleDone(exerciseId)}
+                  aria-pressed={isDone}
+                  aria-label={isDone
+                    ? `Desmarcar ${exercise.name}`
+                    : `Marcar ${exercise.name} como feito`}
+                  className='-ml-1 flex size-11 shrink-0 items-center justify-center'>
+                  <span className={isDone
+                    ? 'flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground'
+                    : 'flex size-6 items-center justify-center rounded-full border-2 border-muted-foreground/40 text-xs tabular text-muted-foreground'}>
+                    {isDone ? <Check className='size-4' /> : position + 1}
+                  </span>
+                </button>
 
                 <button type='button' onClick={() => toggle(exerciseId)}
                   aria-expanded={!isCollapsed}
@@ -250,7 +316,8 @@ function WorkoutForm({ trainingId, exercises }: {
                 </Badge>
                 {isCollapsed && (
                   <span className='text-xs tabular text-muted-foreground'>
-                    {feitas} de {sets.length} séries preenchidas
+                    {sets.length} {sets.length === 1 ? 'série' : 'séries'}
+                    {cargaUnica && ` · ${cargaUnica}kg`}
                   </span>
                 )}
               </div>
@@ -348,6 +415,39 @@ function WorkoutForm({ trainingId, exercises }: {
           {isPending ? 'Salvando...' : `Finalizar · ${totalSets} ${totalSets === 1 ? 'série' : 'séries'}`}
         </Button>
       </div>
+
+      {/* Exercicio desmarcado nao e gravado. Descartar em silencio seria o
+          mesmo problema de antes, invertido — entao aqui se diz o que fica
+          de fora antes de gravar. */}
+      <AlertDialog open={confirmando} onOpenChange={setConfirmando}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendentes.length === 1
+                ? '1 exercício não foi marcado'
+                : `${pendentes.length} exercícios não foram marcados`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Estes ficam de fora do registro:
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <ul className='max-h-40 overflow-y-auto text-sm'>
+            {pendentes.map((id) => (
+              <li key={id} className='border-b border-border py-1.5 last:border-b-0'>
+                {byId.get(id)?.name}
+              </li>
+            ))}
+          </ul>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction onClick={enviar}>
+              Finalizar assim
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </form>
   )
 }
