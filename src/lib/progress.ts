@@ -20,6 +20,8 @@ export function progressMetric({ usesLoad, tracking }: Measure) {
       // minuto, e "0s" no meio de "5:00" e "10:00" fica desalinhado
       tick: (value: number) =>
         `${Math.floor(value / 60)}:${String(Math.round(value % 60)).padStart(2, '0')}`,
+      // "20:00" e mais largo que "20kg" e encostava na linha do grafico
+      axisWidth: 56,
     }
   }
   if (usesLoad) {
@@ -29,6 +31,7 @@ export function progressMetric({ usesLoad, tracking }: Measure) {
       caption: 'recorde de carga',
       format: (value: number) => `${formatNumber(value)} kg`,
       tick: (value: number) => `${formatNumber(value)}kg`,
+      axisWidth: 44,
     }
   }
   return {
@@ -39,5 +42,6 @@ export function progressMetric({ usesLoad, tracking }: Measure) {
     // O eixo fica so com o numero: "24 reps" repetido em cada marca quebra
     // em duas linhas e nao acrescenta nada que o titulo ja nao diga
     tick: (value: number) => formatNumber(value),
+    axisWidth: 36,
   }
 }

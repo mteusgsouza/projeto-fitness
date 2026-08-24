@@ -41,7 +41,7 @@ export function ProgressLine({ data, measure, dimmed }: {
       <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
         <CartesianGrid vertical={false} strokeDasharray='3 3' />
         <XAxis dataKey='label' {...axis} interval='preserveStartEnd' minTickGap={24} />
-        <YAxis {...axis} width={44}
+        <YAxis {...axis} width={metric.axisWidth}
           tickFormatter={(value: number) => metric.tick(value)} />
         <ChartTooltip content={
           <ChartTooltipContent

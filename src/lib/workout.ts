@@ -1,4 +1,7 @@
-import { format, isToday, isYesterday } from 'date-fns'
+import {
+  differenceInCalendarDays, differenceInMonths,
+  format, isToday, isYesterday,
+} from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
 export type SetLike = { reps: number | null; weight: number }
@@ -71,4 +74,29 @@ export function formatPrescription(item: {
     : String(item.reps ?? 0)
   const carga = item.targetWeight === null ? '' : ` · ${formatNumber(item.targetWeight)}kg`
   return `${item.sets}×${medida}${carga}`
+}
+
+/**
+ * Ha quanto tempo a pessoa treina, contado do primeiro treino registrado:
+ * "12 dias", "5 meses", "1 ano e 4 meses".
+ *
+ * Conta em dias e meses de calendario, nao em blocos de 30 dias: quem comecou
+ * em 3 de janeiro completa "1 mes" em 3 de fevereiro, que e como as pessoas
+ * contam.
+ */
+export function formatTrainingSpan(since: Date, now = new Date()) {
+  const dias = differenceInCalendarDays(now, since)
+  if (dias < 1) return 'hoje'
+
+  // differenceInMonths conta mes completo, nao virada de calendario: em 24 de
+  // agosto, quem comecou em 25 de julho ainda esta em dias, nao em "1 mes"
+  const meses = differenceInMonths(now, since)
+  if (meses < 1) return `${dias} ${dias === 1 ? 'dia' : 'dias'}`
+  if (meses < 12) return `${meses} ${meses === 1 ? 'mês' : 'meses'}`
+
+  const anos = Math.floor(meses / 12)
+  const resto = meses % 12
+  const rotuloAnos = `${anos} ${anos === 1 ? 'ano' : 'anos'}`
+  if (!resto) return rotuloAnos
+  return `${rotuloAnos} e ${resto} ${resto === 1 ? 'mês' : 'meses'}`
 }

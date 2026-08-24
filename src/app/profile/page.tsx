@@ -10,12 +10,18 @@ import { FrequencyChart } from '@/components/charts/weekly-charts'
 import { getExerciseProgress, getTrackedExercises, getWeeklyStats } from '@/actions/stats/_actions'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Card, CardContent } from '@/components/ui/card'
+import { formatTrainingSpan } from '@/lib/workout'
+import { cn } from '@/lib/utils'
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className='min-w-0'>
       <p className='label-tec text-muted-foreground'>{label}</p>
-      <p className='truncate text-xl font-semibold tabular'>{value}</p>
+      {/* "1 ano e 4 meses" nao cabe em um terço da largura no tamanho cheio */}
+      <p className={cn('truncate font-semibold tabular',
+        value.length > 9 ? 'text-base' : 'text-xl')}>
+        {value}
+      </p>
     </div>
   )
 }
@@ -24,10 +30,16 @@ export default async function ProfilePage() {
   const user = await currentUser()
   if (!user) return null
 
-  const [weekly, tracked, totalSessions] = await Promise.all([
+  const [weekly, tracked, totalSessions, primeira] = await Promise.all([
     getWeeklyStats(12),
     getTrackedExercises(),
     prisma.workoutSession.count({ where: { userId: user.id } }),
+    // O primeiro treino registrado e o marco de "treinando ha quanto tempo"
+    prisma.workoutSession.findFirst({
+      where: { userId: user.id },
+      orderBy: { performedAt: 'asc' },
+      select: { performedAt: true },
+    }),
   ])
 
   const firstExercise = tracked[0]
@@ -64,8 +76,12 @@ export default async function ProfilePage() {
           <CardContent className='grid grid-cols-3 gap-3 p-4'>
             <Stat label='Sessões' value={String(totalSessions)} />
             <Stat label='Exercícios' value={String(tracked.length)} />
-            <Stat label='12 semanas'
-              value={String(weekly.reduce((sum, point) => sum + point.sessions, 0))} />
+            {/* Antes aqui havia "12 semanas: 8", que era a contagem de sessoes
+                na janela do grafico logo abaixo — dois numeros iguais com
+                nomes diferentes, e nenhum dos dois dizia ha quanto tempo a
+                pessoa treina. */}
+            <Stat label='Treinando há'
+              value={primeira ? formatTrainingSpan(primeira.performedAt) : '—'} />
           </CardContent>
         </Card>
 
