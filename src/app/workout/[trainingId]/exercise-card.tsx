@@ -13,9 +13,17 @@ import { cn } from '@/lib/utils'
 import type { SetRow, WorkoutExercise } from './types'
 
 /**
- * Resume as séries numa linha: "16kg×10 · 16kg×10 · 14kg×8".
- * Sem carga, o "reps" vai uma vez só no fim para não repetir a palavra:
- * "12 · 12 · 10 reps". Devolve null quando não há série preenchida.
+ * Resume as séries em uma linha curta: só a primeira e a última, e apenas
+ * uma delas quando são iguais. Listar todas estourava a largura no celular
+ * ("4 séries · 42,5kg×8 · 42,5kg×8 · 42,5kg×8 · 40kg×6" quebrava em duas
+ * linhas), e as do meio repetem o que a primeira já disse — o que interessa
+ * é onde começou e onde terminou.
+ *
+ *   iguais    → "42,5kg×8"
+ *   diferentes→ "42,5kg×8 → 40kg×6"
+ *   sem carga → "12 → 10 reps"
+ *
+ * Devolve null quando não há série preenchida.
  */
 export function formatSets(
   sets: { weight: number | string; reps: number | string }[],
@@ -23,10 +31,17 @@ export function formatSets(
 ) {
   const validas = sets.filter((set) => Number(set.reps) > 0)
   if (!validas.length) return null
-  if (usesLoad) {
-    return validas.map((set) => `${formatNumber(Number(set.weight) || 0)}kg×${set.reps}`).join(' · ')
-  }
-  return `${validas.map((set) => set.reps).join(' · ')} reps`
+
+  const primeira = validas[0]
+  const ultima = validas[validas.length - 1]
+  const rotulo = (set: { weight: number | string; reps: number | string }) =>
+    usesLoad ? `${formatNumber(Number(set.weight) || 0)}kg×${set.reps}` : `${set.reps}`
+
+  const iguais = Number(primeira.weight) === Number(ultima.weight)
+    && Number(primeira.reps) === Number(ultima.reps)
+
+  const corpo = iguais ? rotulo(primeira) : `${rotulo(primeira)} → ${rotulo(ultima)}`
+  return usesLoad ? corpo : `${corpo} reps`
 }
 
 function ExerciseCard({
