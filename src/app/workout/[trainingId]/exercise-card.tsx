@@ -80,8 +80,14 @@ function ExerciseCard({
         isDragging && 'relative z-10 opacity-80 shadow-lg ring-2 ring-primary/40',
       )}
     >
-      <CardHeader className='p-3 pb-2 space-y-1'>
-        <div className='flex items-start gap-2'>
+      {/*
+        Recolhido, o resumo entra na mesma linha dos botoes em vez de ocupar
+        uma segunda linha: os botoes ja tem 44px por area de toque, e o texto
+        cabe dentro dessa altura. Some ~28px por card, o que faz diferenca
+        quando a lista inteira precisa caber na tela para reordenar.
+      */}
+      <CardHeader className={cn('p-3', isCollapsed ? 'pb-3' : 'pb-2 space-y-1')}>
+        <div className='flex items-center gap-2'>
           <button type='button' onClick={() => onToggleDone(exerciseId)}
             aria-pressed={isDone}
             aria-label={isDone
@@ -104,6 +110,12 @@ function ExerciseCard({
                 ? <ChevronDown className='size-4 shrink-0 text-muted-foreground' />
                 : <ChevronUp className='size-4 shrink-0 text-muted-foreground' />}
             </CardTitle>
+            {isCollapsed && (
+              <span className='block truncate text-xs tabular text-muted-foreground'>
+                {sets.length} {sets.length === 1 ? 'série' : 'séries'}
+                {resumo && ` · ${resumo}`}
+              </span>
+            )}
           </button>
 
           {/*
@@ -124,18 +136,14 @@ function ExerciseCard({
           </button>
         </div>
 
-        <div className='flex flex-wrap items-center gap-x-2 gap-y-1 pl-7'>
-          <Badge variant='secondary' className='tabular'>
-            {exercise.prescribedSets}×{exercise.prescribedReps}
-            {exercise.targetWeight !== null && ` · ${exercise.targetWeight}kg`}
-          </Badge>
-          {isCollapsed && (
-            <span className='text-xs tabular text-muted-foreground'>
-              {sets.length} {sets.length === 1 ? 'série' : 'séries'}
-              {resumo && ` · ${resumo}`}
-            </span>
-          )}
-        </div>
+        {!isCollapsed && (
+          <div className='flex flex-wrap items-center gap-x-2 gap-y-1 pl-7'>
+            <Badge variant='secondary' className='tabular'>
+              {exercise.prescribedSets}×{exercise.prescribedReps}
+              {exercise.targetWeight !== null && ` · ${exercise.targetWeight}kg`}
+            </Badge>
+          </div>
+        )}
 
         {!isCollapsed && exercise.previousSets.length > 0 && (
           <p className='pl-7 text-xs text-muted-foreground'>
