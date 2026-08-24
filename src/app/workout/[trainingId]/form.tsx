@@ -3,7 +3,7 @@
 import React from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Check, Plus, Trash2 } from 'lucide-react'
+import { Check, ChevronDown, ChevronUp, ListCollapse, Plus, Trash2 } from 'lucide-react'
 import { createWorkoutSession, syncPrescriptionWeights } from '@/actions/workout/_actions'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -59,6 +59,40 @@ function WorkoutForm({ trainingId, exercises }: {
     Object.fromEntries(exercises.map((exercise) => [exercise.exerciseId, initialSets(exercise)]))
   )
 
+  /**
+   * Ordem de execucao desta sessao. Vale so aqui: a ficha nao muda, porque
+   * trocar a ordem de hoje nao significa querer trocar a prescricao.
+   */
+  const [order, setOrder] = React.useState(() => exercises.map((exercise) => exercise.exerciseId))
+  const [collapsed, setCollapsed] = React.useState<Record<string, boolean>>({})
+
+  const byId = React.useMemo(
+    () => new Map(exercises.map((exercise) => [exercise.exerciseId, exercise])),
+    [exercises],
+  )
+
+  function move(exerciseId: string, delta: number) {
+    setOrder((current) => {
+      const index = current.indexOf(exerciseId)
+      const target = index + delta
+      if (index < 0 || target < 0 || target >= current.length) return current
+      const next = [...current]
+      next[index] = current[target]
+      next[target] = current[index]
+      return next
+    })
+  }
+
+  function toggle(exerciseId: string) {
+    setCollapsed((current) => ({ ...current, [exerciseId]: !current[exerciseId] }))
+  }
+
+  const allCollapsed = order.every((id) => collapsed[id])
+
+  function toggleAll() {
+    setCollapsed(allCollapsed ? {} : Object.fromEntries(order.map((id) => [id, true])))
+  }
+
   function updateSet(exerciseId: string, index: number, field: keyof SetRow, value: string) {
     setRows((current) => {
       const sets = [...current[exerciseId]]
@@ -88,7 +122,8 @@ function WorkoutForm({ trainingId, exercises }: {
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
 
-    const entries = exercises.map((exercise) => ({
+    // Segue a ordem da tela, nao a da ficha
+    const entries = order.map((id) => byId.get(id)!).map((exercise) => ({
       exerciseId: exercise.exerciseId,
       sets: (rows[exercise.exerciseId] ?? [])
         .map((set) => ({
@@ -119,7 +154,7 @@ function WorkoutForm({ trainingId, exercises }: {
       }
 
       // Se a carga executada divergiu da ficha, oferece atualizar a prescrição.
-      const divergences = exercises.flatMap((exercise) => {
+      const divergences = order.map((id) => byId.get(id)!).flatMap((exercise) => {
         const entry = entries.find((item) => item.exerciseId === exercise.exerciseId)
         if (!entry) return []
         const heaviest = Math.max(...entry.sets.map((set) => set.weight))
@@ -150,24 +185,78 @@ function WorkoutForm({ trainingId, exercises }: {
 
   return (
     <form onSubmit={handleSubmit} className='space-y-3'>
-      {exercises.map((exercise) => {
-        const sets = rows[exercise.exerciseId] ?? []
+      {/* Recolher tudo deixa a lista curta o bastante para reordenar sem rolar */}
+      <div className='flex items-center justify-between gap-2'>
+        <span className='label-tec text-muted-foreground'>
+          {order.length} exercícios
+        </span>
+        <Button type='button' variant='outline' size='sm' onClick={toggleAll}>
+          <ListCollapse className='size-4' />
+          {allCollapsed ? 'Expandir tudo' : 'Recolher tudo'}
+        </Button>
+      </div>
+
+      {order.map((exerciseId, position) => {
+        const exercise = byId.get(exerciseId)
+        if (!exercise) return null
+        const sets = rows[exerciseId] ?? []
+        const isCollapsed = !!collapsed[exerciseId]
+        const feitas = sets.filter((set) => Number(set.reps) > 0).length
         // Sem carga, a coluna some e as demais reocupam a largura
         const cols = exercise.usesLoad
           ? 'grid grid-cols-[1.5rem_1fr_1fr_3.25rem_2.25rem] items-center gap-2'
           : 'grid grid-cols-[1.5rem_1fr_3.25rem_2.25rem] items-center gap-2'
         return (
-          <Card key={exercise.exerciseId}>
+          <Card key={exerciseId}>
             <CardHeader className='p-3 pb-2 space-y-1'>
-              <div className='flex items-start justify-between gap-2'>
-                <CardTitle className='text-base leading-tight'>{exercise.name}</CardTitle>
-                <Badge variant='secondary' className='shrink-0 tabular'>
+              <div className='flex items-start gap-2'>
+                <span className='mt-0.5 w-5 shrink-0 text-sm tabular text-muted-foreground'>
+                  {position + 1}
+                </span>
+
+                <button type='button' onClick={() => toggle(exerciseId)}
+                  aria-expanded={!isCollapsed}
+                  className='min-w-0 flex-1 text-left'>
+                  <CardTitle className='flex items-center gap-1.5 text-base leading-tight'>
+                    <span className='min-w-0 truncate'>{exercise.name}</span>
+                    {isCollapsed
+                      ? <ChevronDown className='size-4 shrink-0 text-muted-foreground' />
+                      : <ChevronUp className='size-4 shrink-0 text-muted-foreground' />}
+                  </CardTitle>
+                </button>
+
+                <div className='flex shrink-0 items-center gap-1'>
+                  <Button type='button' size='icon' variant='ghost'
+                    aria-label={`Mover ${exercise.name} para cima`}
+                    disabled={position === 0}
+                    onClick={() => move(exerciseId, -1)}
+                    className='size-8 text-muted-foreground hover:text-foreground'>
+                    <ChevronUp className='size-4' />
+                  </Button>
+                  <Button type='button' size='icon' variant='ghost'
+                    aria-label={`Mover ${exercise.name} para baixo`}
+                    disabled={position === order.length - 1}
+                    onClick={() => move(exerciseId, 1)}
+                    className='size-8 text-muted-foreground hover:text-foreground'>
+                    <ChevronDown className='size-4' />
+                  </Button>
+                </div>
+              </div>
+
+              <div className='flex flex-wrap items-center gap-x-2 gap-y-1 pl-7'>
+                <Badge variant='secondary' className='tabular'>
                   {exercise.prescribedSets}×{exercise.prescribedReps}
                   {exercise.targetWeight !== null && ` · ${exercise.targetWeight}kg`}
                 </Badge>
+                {isCollapsed && (
+                  <span className='text-xs tabular text-muted-foreground'>
+                    {feitas} de {sets.length} séries preenchidas
+                  </span>
+                )}
               </div>
-              {exercise.previousSets.length > 0 && (
-                <p className='text-xs text-muted-foreground'>
+
+              {!isCollapsed && exercise.previousSets.length > 0 && (
+                <p className='pl-7 text-xs text-muted-foreground'>
                   Última vez: {exercise.previousSets
                     .map((set) => exercise.usesLoad
                       ? `${set.weight}kg×${set.reps}`
@@ -177,7 +266,7 @@ function WorkoutForm({ trainingId, exercises }: {
               )}
             </CardHeader>
 
-            <CardContent className='p-3 pt-0'>
+            <CardContent className={isCollapsed ? 'hidden' : 'p-3 pt-0'}>
               <div className={`${cols} px-0.5 pb-1 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground`}>
                 <span>#</span>
                 {exercise.usesLoad && <span>Carga</span>}
@@ -194,23 +283,23 @@ function WorkoutForm({ trainingId, exercises }: {
                       <Input type='number' min={0} step='0.5' inputMode='decimal' placeholder='0'
                         aria-label={`Carga da série ${index + 1} de ${exercise.name}`}
                         value={set.weight}
-                        onChange={(event) => updateSet(exercise.exerciseId, index, 'weight', event.target.value)}
+                        onChange={(event) => updateSet(exerciseId, index, 'weight', event.target.value)}
                         className='h-11 text-center tabular text-base' />
                     )}
                     <Input type='number' min={0} inputMode='numeric' placeholder='0'
                       aria-label={`Repetições da série ${index + 1} de ${exercise.name}`}
                       value={set.reps}
-                      onChange={(event) => updateSet(exercise.exerciseId, index, 'reps', event.target.value)}
+                      onChange={(event) => updateSet(exerciseId, index, 'reps', event.target.value)}
                       className='h-11 text-center tabular text-base' />
                     <Input type='number' min={1} max={10} inputMode='numeric' placeholder='—'
                       aria-label={`Esforço percebido da série ${index + 1} de ${exercise.name}`}
                       value={set.rpe}
-                      onChange={(event) => updateSet(exercise.exerciseId, index, 'rpe', event.target.value)}
+                      onChange={(event) => updateSet(exerciseId, index, 'rpe', event.target.value)}
                       className='h-11 px-1 text-center tabular' />
                     <Button type='button' size='icon' variant='ghost'
                       aria-label={`Remover série ${index + 1}`}
                       disabled={sets.length === 1}
-                      onClick={() => removeSet(exercise.exerciseId, index)}
+                      onClick={() => removeSet(exerciseId, index)}
                       className='size-9 text-muted-foreground hover:bg-destructive/10 hover:text-destructive'>
                       <Trash2 className='size-4' />
                     </Button>
@@ -218,10 +307,10 @@ function WorkoutForm({ trainingId, exercises }: {
                 ))}
               </div>
 
-              <Button type='button' variant='ghost' size='sm'
-                onClick={() => addSet(exercise.exerciseId)}
-                className='mt-2 w-full text-muted-foreground hover:text-foreground'>
-                <Plus className='size-4' /> Série
+              <Button type='button' variant='outline' size='sm'
+                onClick={() => addSet(exerciseId)}
+                className='mt-3 w-full'>
+                <Plus className='size-4' /> Adicionar série
               </Button>
             </CardContent>
           </Card>

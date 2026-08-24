@@ -31,6 +31,7 @@ Construído com Next.js (App Router), autenticação via Clerk e persistência e
 - `/workout/[trainingId]` registra o treino **série a série**: carga, repetições e RPE (esforço percebido, 1–10) independentes por série.
 - Os campos vêm **pré-preenchidos com a última sessão** daquele exercício — ou com a prescrição da ficha, se for a primeira vez.
 - A prescrição é valor inicial, não trava: dá para mudar a carga só da última série, adicionar séries além do previsto ou parar antes.
+- Cada exercício **recolhe e expande**, e dá para **reordenar** a execução com as setas. Recolher tudo deixa a lista curta o bastante para reordenar sem rolar a tela. A ordem vale só para a sessão: a ficha não muda.
 - Permite **lançamento retroativo** (data e hora editáveis) e observações.
 - Se a carga executada divergir da ficha, o app oferece atualizar a prescrição no fim da sessão.
 
