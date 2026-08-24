@@ -84,12 +84,16 @@ async function TrainingPage() {
                 ) : (
                   <ul className='mb-3 divide-y divide-border'>
                     {treino.exercises.map((item) => (
-                      <li key={item.id} className='flex items-center justify-between gap-3 py-2'>
-                        <span className='min-w-0 truncate text-sm'>{item.exercise.name}</span>
-                        <span className='shrink-0 text-sm tabular text-muted-foreground'>
-                          {item.sets}×{item.reps}
-                          {item.targetWeight !== null && ` · ${item.targetWeight}kg`}
-                        </span>
+                      <li key={item.id}>
+                        {/* Leva ao detalhe do exercicio: execucao, musculos e progressao */}
+                        <Link href={`/exercises/${item.exerciseId}`}
+                          className='flex items-center justify-between gap-3 py-2 transition-colors hover:text-primary'>
+                          <span className='min-w-0 truncate text-sm'>{item.exercise.name}</span>
+                          <span className='shrink-0 text-sm tabular text-muted-foreground'>
+                            {item.sets}×{item.reps}
+                            {item.targetWeight !== null && ` · ${item.targetWeight}kg`}
+                          </span>
+                        </Link>
                       </li>
                     ))}
                   </ul>

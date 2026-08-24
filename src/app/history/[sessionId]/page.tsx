@@ -1,4 +1,5 @@
 import React from 'react'
+import Link from 'next/link'
 import { format } from 'date-fns'
 import { notFound } from 'next/navigation'
 import { currentUser } from '@clerk/nextjs/server'
@@ -37,11 +38,11 @@ async function SessionDetailPage({
   if (!session) notFound()
 
   // Agrupa as séries por exercício preservando a ordem em que foram gravadas.
-  const byExercise = new Map<string, { name: string; sets: typeof session.setLogs }>()
+  const byExercise = new Map<string, { id: string; name: string; sets: typeof session.setLogs }>()
   for (const log of session.setLogs) {
     const current = byExercise.get(log.exerciseId)
     if (current) current.sets.push(log)
-    else byExercise.set(log.exerciseId, { name: log.exercise.name, sets: [log] })
+    else byExercise.set(log.exerciseId, { id: log.exerciseId, name: log.exercise.name, sets: [log] })
   }
   const exercises = [...byExercise.values()]
 
@@ -88,7 +89,12 @@ async function SessionDetailPage({
             <Card key={exercise.name}>
               <CardHeader className='p-3 pb-2'>
                 <div className='flex items-start justify-between gap-2'>
-                  <CardTitle className='text-base leading-tight'>{exercise.name}</CardTitle>
+                  <CardTitle className='text-base leading-tight'>
+                    <Link href={`/exercises/${exercise.id}`}
+                      className='transition-colors hover:text-primary'>
+                      {exercise.name}
+                    </Link>
+                  </CardTitle>
                   {heaviest > 0 && (
                     <Badge variant='secondary' className='shrink-0 tabular'>
                       máx {heaviest}kg

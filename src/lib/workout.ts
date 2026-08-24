@@ -24,3 +24,8 @@ export function formatShortDate(date: Date) {
   if (isYesterday(date)) return 'Ontem'
   return format(date, "d 'de' MMM", { locale: ptBR })
 }
+
+/** Separador decimal pt-BR, sem casas desnecessárias: 42,5 / 15 */
+export function formatNumber(value: number) {
+  return value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
+}

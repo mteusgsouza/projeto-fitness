@@ -16,7 +16,7 @@ Construído com Next.js (App Router), autenticação via Clerk e persistência e
 
 ### Catálogo de exercícios
 - **88 exercícios pré-cadastrados** pelo seed, em 10 grupos musculares (peito, costas, pernas, glúteos, ombros, bíceps, tríceps, antebraço, core, cardio), cada um com equipamento e nível (iniciante/intermediário/avançado).
-- Cada exercício tem **página própria** em `/exercises/[id]`: como executar, músculos trabalhados (do principal para os auxiliares), nível, equipamento e o seu histórico naquele movimento — sessões, recorde e última vez. O recorde respeita a carga: kg para quem usa, repetições para peso corporal.
+- Cada exercício tem **página própria** em `/exercises/[id]`: como executar, músculos trabalhados (do principal para os auxiliares), nível, equipamento e o seu histórico naquele movimento — sessões, recorde, última vez e a **curva de progressão**. Dá para chegar nela clicando no exercício dentro da ficha, no detalhe de uma sessão ou pelo catálogo. O recorde respeita a carga: kg para quem usa, repetições para peso corporal.
 - **Carga é propriedade do exercício** (`usesLoad`): 62 usam carga externa, 26 não (peso corporal e cardio). Nos que não usam, o campo de carga nem aparece — carga ali é "não se aplica", não zero. A variante com peso é outro item do catálogo: *Agachamento livre sem peso* e *Agachamento livre* (barra) são exercícios distintos.
 - O catálogo é global (`userId` nulo); a mesma tabela aceita exercícios personalizados por usuário.
 - É o que torna a comparação de evolução possível: "Rosca direta" é sempre a mesma entidade, em vez de texto livre digitado de formas diferentes.

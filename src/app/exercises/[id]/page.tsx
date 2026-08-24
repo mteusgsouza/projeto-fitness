@@ -1,11 +1,12 @@
 import React from 'react'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { Dumbbell, TrendingUp } from 'lucide-react'
+import { Dumbbell } from 'lucide-react'
 import { currentUser } from '@clerk/nextjs/server'
 import prisma from '@/lib/db'
+import { getExerciseProgress } from '@/actions/stats/_actions'
+import { ProgressLine } from '@/components/charts/progress-line'
 import MainLayout from '@/components/main-layout'
 import { levelLabel, muscleGroupLabel } from '@/lib/exercise'
 import { Badge } from '@/components/ui/badge'
@@ -55,6 +56,9 @@ export default async function ExerciseDetailPage({
       : Math.max(...logs.map((log) => log.reps)))
     : 0
   const ultima = logs[0]?.session.performedAt
+
+  // A curva vem da mesma consulta que alimenta a progressao no perfil
+  const progresso = logs.length ? await getExerciseProgress(exercise.id) : []
 
   return (
     <MainLayout>
@@ -146,10 +150,16 @@ export default async function ExerciseDetailPage({
                     </p>
                   </div>
                 </div>
-                <Link href='/profile'
-                  className='mt-4 inline-flex items-center gap-2 text-sm underline underline-offset-2'>
-                  <TrendingUp className='size-4' /> Ver progressão no perfil
-                </Link>
+                {progresso.length >= 2 ? (
+                  <div className='mt-4 -ml-2'>
+                    <ProgressLine data={progresso} usesLoad={exercise.usesLoad} />
+                  </div>
+                ) : (
+                  <p className='mt-3 text-sm text-muted-foreground'>
+                    Registre este exercício em mais de um treino para ver a curva
+                    de progressão.
+                  </p>
+                )}
               </>
             )}
           </CardContent>
