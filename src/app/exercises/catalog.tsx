@@ -1,7 +1,8 @@
 'use client'
 
 import * as React from 'react'
-import { Search } from 'lucide-react'
+import Link from 'next/link'
+import { ChevronRight, Search } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -61,22 +62,24 @@ function Catalog({ exercises }: { exercises: ExerciseOption[] }) {
               </div>
               <div className='grid gap-2 md:grid-cols-2'>
                 {group.items.map((exercise) => (
-                  <Card key={exercise.id}>
-                    <CardContent className='flex items-center gap-3 p-3'>
-                      <div className='min-w-0 flex-1'>
-                        <p className='truncate text-sm font-medium'>{exercise.name}</p>
-                        {exercise.equipment && (
-                          <p className='tabular text-xs text-muted-foreground'>
-                            {exercise.equipment}
+                  <Link key={exercise.id} href={`/exercises/${exercise.id}`}>
+                    <Card className='h-full transition-colors hover:bg-muted active:bg-muted'>
+                      <CardContent className='flex items-center gap-3 p-3'>
+                        <div className='min-w-0 flex-1'>
+                          <p className='truncate text-sm font-medium'>{exercise.name}</p>
+                          <p className='truncate text-xs text-muted-foreground'>
+                            {[exercise.equipment, exercise.usesLoad ? null : 'sem carga']
+                              .filter(Boolean).join(' · ')}
                           </p>
-                        )}
-                      </div>
-                      <Badge variant='outline'
-                        className={`shrink-0 text-[0.625rem] ${LEVEL_TONE[exercise.level] ?? ''}`}>
-                        {levelLabel(exercise.level)}
-                      </Badge>
-                    </CardContent>
-                  </Card>
+                        </div>
+                        <Badge variant='outline'
+                          className={`shrink-0 text-[0.625rem] ${LEVEL_TONE[exercise.level] ?? ''}`}>
+                          {levelLabel(exercise.level)}
+                        </Badge>
+                        <ChevronRight className='size-4 shrink-0 text-muted-foreground' />
+                      </CardContent>
+                    </Card>
+                  </Link>
                 ))}
               </div>
             </section>

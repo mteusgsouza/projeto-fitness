@@ -18,6 +18,8 @@ export type WorkoutExercise = {
   prescribedSets: number
   prescribedReps: number
   targetWeight: number | null
+  /** Falso para peso corporal e cardio: a coluna de carga nem aparece. */
+  usesLoad: boolean
   previousSets: { reps: number; weight: number; rpe: number | null }[]
 }
 
@@ -150,6 +152,10 @@ function WorkoutForm({ trainingId, exercises }: {
     <form onSubmit={handleSubmit} className='space-y-3'>
       {exercises.map((exercise) => {
         const sets = rows[exercise.exerciseId] ?? []
+        // Sem carga, a coluna some e as demais reocupam a largura
+        const cols = exercise.usesLoad
+          ? 'grid grid-cols-[1.5rem_1fr_1fr_3.25rem_2.25rem] items-center gap-2'
+          : 'grid grid-cols-[1.5rem_1fr_3.25rem_2.25rem] items-center gap-2'
         return (
           <Card key={exercise.exerciseId}>
             <CardHeader className='p-3 pb-2 space-y-1'>
@@ -163,16 +169,18 @@ function WorkoutForm({ trainingId, exercises }: {
               {exercise.previousSets.length > 0 && (
                 <p className='text-xs text-muted-foreground'>
                   Última vez: {exercise.previousSets
-                    .map((set) => `${set.weight}kg×${set.reps}`)
+                    .map((set) => exercise.usesLoad
+                      ? `${set.weight}kg×${set.reps}`
+                      : `${set.reps} reps`)
                     .join(' · ')}
                 </p>
               )}
             </CardHeader>
 
             <CardContent className='p-3 pt-0'>
-              <div className='grid grid-cols-[1.5rem_1fr_1fr_3.25rem_2.25rem] items-center gap-2 px-0.5 pb-1 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground'>
+              <div className={`${cols} px-0.5 pb-1 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground`}>
                 <span>#</span>
-                <span>Carga</span>
+                {exercise.usesLoad && <span>Carga</span>}
                 <span>Reps</span>
                 <span>RPE</span>
                 <span className='sr-only'>Remover</span>
@@ -180,14 +188,15 @@ function WorkoutForm({ trainingId, exercises }: {
 
               <div className='space-y-2'>
                 {sets.map((set, index) => (
-                  <div key={index}
-                    className='grid grid-cols-[1.5rem_1fr_1fr_3.25rem_2.25rem] items-center gap-2'>
+                  <div key={index} className={cols}>
                     <span className='text-sm tabular text-muted-foreground'>{index + 1}</span>
-                    <Input type='number' min={0} step='0.5' inputMode='decimal' placeholder='0'
-                      aria-label={`Carga da série ${index + 1} de ${exercise.name}`}
-                      value={set.weight}
-                      onChange={(event) => updateSet(exercise.exerciseId, index, 'weight', event.target.value)}
-                      className='h-11 text-center tabular text-base' />
+                    {exercise.usesLoad && (
+                      <Input type='number' min={0} step='0.5' inputMode='decimal' placeholder='0'
+                        aria-label={`Carga da série ${index + 1} de ${exercise.name}`}
+                        value={set.weight}
+                        onChange={(event) => updateSet(exercise.exerciseId, index, 'weight', event.target.value)}
+                        className='h-11 text-center tabular text-base' />
+                    )}
                     <Input type='number' min={0} inputMode='numeric' placeholder='0'
                       aria-label={`Repetições da série ${index + 1} de ${exercise.name}`}
                       value={set.reps}

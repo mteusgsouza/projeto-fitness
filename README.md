@@ -11,11 +11,13 @@ Construído com Next.js (App Router), autenticação via Clerk e persistência e
 ### Autenticação
 - Cadastro e login via **Clerk**, com telas em `/sign-in` e `/sign-up` e interface traduzida para português (`@clerk/localizations`).
 - Menu de conta (`UserButton`) no cabeçalho, com logout e gerenciamento de perfil.
-- As rotas `/`, `/training/*`, `/history/*` e `/workout/*` são protegidas no `proxy.ts`.
+- As rotas `/`, `/training/*`, `/history/*`, `/workout/*`, `/profile`, `/exercises` e `/settings` são protegidas no `proxy.ts`.
 - Na primeira visita, o usuário do Clerk é espelhado na tabela `User` via upsert.
 
 ### Catálogo de exercícios
 - **88 exercícios pré-cadastrados** pelo seed, em 10 grupos musculares (peito, costas, pernas, glúteos, ombros, bíceps, tríceps, antebraço, core, cardio), cada um com equipamento e nível (iniciante/intermediário/avançado).
+- Cada exercício tem **página própria** em `/exercises/[id]`: como executar, músculos trabalhados (do principal para os auxiliares), nível, equipamento e o seu histórico naquele movimento — sessões, recorde e última vez. O recorde respeita a carga: kg para quem usa, repetições para peso corporal.
+- **Carga é propriedade do exercício** (`usesLoad`): 62 usam carga externa, 26 não (peso corporal e cardio). Nos que não usam, o campo de carga nem aparece — carga ali é "não se aplica", não zero. A variante com peso é outro item do catálogo: *Agachamento livre sem peso* e *Agachamento livre* (barra) são exercícios distintos.
 - O catálogo é global (`userId` nulo); a mesma tabela aceita exercícios personalizados por usuário.
 - É o que torna a comparação de evolução possível: "Rosca direta" é sempre a mesma entidade, em vez de texto livre digitado de formas diferentes.
 
@@ -33,14 +35,19 @@ Construído com Next.js (App Router), autenticação via Clerk e persistência e
 - Se a carga executada divergir da ficha, o app oferece atualizar a prescrição no fim da sessão.
 
 ### Histórico
-- `/history` lista as sessões com data, número de exercícios, séries e volume total.
+- `/history` lista as sessões com data, número de exercícios e séries. Não há volume somado: quilos de exercícios diferentes não se somam em nada legível — 14 t de perna e 3 t de peito não são comparáveis, e nenhum dos dois diz se o treino foi bom.
 - `/history/[sessionId]` mostra o detalhe série a série, com carga, reps e RPE.
 - Excluir uma sessão não afeta a ficha.
 
-### Gráficos na home
-- **Frequência**: treinos por semana nas últimas 12 semanas (semanas sem treino aparecem como zero, para o gráfico não mentir).
-- **Volume por semana**: soma de `reps × carga`.
-- **Progressão por exercício**: carga máxima ao longo do tempo, com seletor de exercício, recorde e variação desde o primeiro registro.
+### Home: calendário
+- **Treino de hoje** em destaque, com atalho para começar — a ação mais provável ao abrir o app.
+- **Calendário mensal** marcando os dias treinados, navegável entre meses (um ponto por sessão, então dois treinos no mesmo dia aparecem).
+- Últimas atividades e as fichas cadastradas.
+
+### Perfil: evolução
+- **Progressão por exercício**, com seletor, recorde e variação desde o primeiro registro. Exercício com carga progride em **kg**; peso corporal e cardio progridem em **repetições**.
+- **Frequência** por semana nas últimas 12 semanas (semanas sem treino aparecem como zero, para o gráfico não mentir).
+- Atalhos para o catálogo de exercícios e as configurações.
 
 ### Interface
 - **Mobile primeiro**: barra inferior fixa com indicação de página ativa e botão de ação em destaque; no desktop, navegação no topo.
@@ -79,9 +86,11 @@ Limitações conhecidas:
 | Item | Situação |
 |---|---|
 | Descanso entre séries | Não há cronômetro nem registro do tempo de descanso. |
+| Exercícios isométricos | Prancha e similares são gravados em `reps`, mas na prática a medida é tempo. O schema não tem noção de duração, então 3×45 ali significa 45 segundos por convenção, não por modelo. |
+| Descrições dos exercícios | Escritas com base em prática comum de academia, sem revisão de profissional de educação física. Servem de referência, não de prescrição. |
+| Volume no detalhe da sessão | O card de volume somado saiu da listagem e das últimas atividades, mas segue no detalhe de cada sessão — mesma métrica, mesma ressalva. |
 | Metas e periodização | Não há definição de meta de carga nem sugestão automática de progressão. |
 | Medidas corporais | Só treino é registrado — sem peso corporal, medidas ou fotos. |
-| Volume ignora peso corporal | Volume é `reps × carga`, então flexão, barra e prancha contam zero. Para quem treina sobretudo com peso corporal, o gráfico de volume fica achatado. |
 | `createRouteMatcher` | Depreciado no Clerk 7: a recomendação passou a ser checar autorização em cada página/rota em vez de casar caminhos no proxy. Funciona hoje, mas sai no próximo major. |
 | Exercícios personalizados | O schema já suporta (`Exercise.userId`), mas ainda não há tela para criar. |
 | Bundle da home | Os gráficos levam a home a ~314 kB de First Load JS. Um `dynamic()` no recharts resolveria. |
@@ -195,37 +204,43 @@ prisma/
   schema.prisma          User, Exercise, Training, TrainingExercise,
                          WorkoutSession, SetLog
   seed.ts                catálogo global de exercícios (idempotente)
+  exercise-details.ts    descrição e músculos de cada exercício
   migrations/
 src/
-  proxy.ts               Clerk — protege /, /training/*, /history/*, /workout/*
+  proxy.ts               Clerk - protege as rotas autenticadas
   actions/
     training/            CRUD da ficha + validação Zod compartilhada
     workout/             createWorkoutSession, deleteWorkoutSession,
                          syncPrescriptionWeights
     stats/               agregações para os gráficos
   app/
-    layout.tsx           ClerkProvider + ThemeProvider + UserProvider
-    page.tsx             Início, com os gráficos
+    layout.tsx           ClerkProvider + ThemeProvider
+    page.tsx             Home: treino de hoje + calendario
     (auth)/              sign-in, sign-up
     training/            listagem, create, update/[id], delete-dialog
     workout/[trainingId] execução série a série
     history/             listagem, [sessionId], create (escolha da ficha)
+    profile/             evolucao por exercicio e atalhos
+    exercises/           catálogo e [id] com o detalhe de cada exercício
+    settings/            tema e cor de destaque
   components/
     ui/                  shadcn/ui
     charts/              gráficos em Recharts
     picker.tsx           seletor: drawer no mobile, dialog no desktop
+    training-calendar.tsx calendario mensal da home
     header, bottom-nav, page-header, header-title, treinos, ...
   lib/
     db.ts                singleton do Prisma Client
     training-day.ts      dias da semana
     exercise.ts          grupos musculares e agrupamento do catálogo
     workout.ts           volume e formatação de datas
+    nav.ts               destinos e regra de item ativo
 ```
 
 ### Modelos
 
 - **User** — espelha o usuário do Clerk (o `id` é o ID do Clerk).
-- **Exercise** — catálogo. `userId` nulo = global; preenchido = personalizado.
+- **Exercise** — catálogo. `userId` nulo = global; preenchido = personalizado. `usesLoad` diz se usa carga externa; `description` e `muscles` alimentam a página do exercício.
 - **Training** — a ficha de um dia da semana. Único por `[userId, trainingDay]`.
 - **TrainingExercise** — a prescrição: qual exercício, quantas séries/reps, carga alvo.
 - **WorkoutSession** — uma sessão realizada, com data e snapshot do nome da ficha.

@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client'
+import { EXERCISE_DETAILS } from './exercise-details'
 
 const prisma = new PrismaClient()
 
@@ -7,6 +8,18 @@ type CatalogExercise = {
   muscleGroup: string
   equipment: string
   level: string
+}
+
+/**
+ * Carga externa nao se aplica a peso corporal nem a cardio. Nesses casos o
+ * campo de carga some do formulario e o exercicio fica fora da progressao de
+ * peso — a variante com carga e outro item do catalogo (agachamento livre
+ * sem peso vs. agachamento livre com barra).
+ */
+function usesLoad(exercise: CatalogExercise) {
+  if (exercise.muscleGroup === 'cardio') return false
+  if (exercise.equipment === 'peso-corporal') return false
+  return true
 }
 
 /**
@@ -126,6 +139,15 @@ const catalog: CatalogExercise[] = [
 async function main() {
   console.log('seed: ' + catalog.length + ' exercícios no catálogo')
 
+  const semDetalhe = catalog.filter((e) => !EXERCISE_DETAILS[e.name]).map((e) => e.name)
+  if (semDetalhe.length) {
+    console.warn('SEM descricao/musculos (' + semDetalhe.length + '): ' + semDetalhe.join(', '))
+  }
+  const sobrando = Object.keys(EXERCISE_DETAILS).filter((n) => !catalog.some((e) => e.name === n))
+  if (sobrando.length) {
+    console.warn('detalhe sem exercicio no catalogo: ' + sobrando.join(', '))
+  }
+
   let created = 0
   let updated = 0
 
@@ -138,11 +160,19 @@ async function main() {
       select: { id: true },
     })
 
+    const detail = EXERCISE_DETAILS[exercise.name]
+    const data = {
+      ...exercise,
+      usesLoad: usesLoad(exercise),
+      description: detail?.description ?? null,
+      muscles: detail?.muscles ?? [],
+    }
+
     if (existing) {
-      await prisma.exercise.update({ where: { id: existing.id }, data: exercise })
+      await prisma.exercise.update({ where: { id: existing.id }, data })
       updated++
     } else {
-      await prisma.exercise.create({ data: exercise })
+      await prisma.exercise.create({ data })
       created++
     }
   }

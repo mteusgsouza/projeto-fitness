@@ -13,7 +13,7 @@ import { GripVertical, Plus, Save, Trash2 } from 'lucide-react'
 import React from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { useFieldArray, useForm } from 'react-hook-form'
+import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from "@hookform/resolvers/zod";
 import { createTraining, updateTraining } from '@/actions/training/_actions'
 import { TrainingFormSchema, type FormTrainingType } from '@/actions/training/_schema'
@@ -42,6 +42,12 @@ function FormTrining({ idTraining, initialData, exercises, takenDays = [] }: {
 }) {
   const router = useRouter()
   const [isPending, startTransition] = React.useTransition()
+
+  // Carga so aparece para exercicio que usa carga externa
+  const usesLoadById = React.useMemo(
+    () => new Map(exercises.map((exercise) => [exercise.id, exercise.usesLoad])),
+    [exercises],
+  )
 
   const exerciseGroups: PickerGroup[] = React.useMemo(
     () => groupByMuscle(exercises).map((group) => ({
@@ -87,6 +93,10 @@ function FormTrining({ idTraining, initialData, exercises, takenDays = [] }: {
     name: "exercises",
     control: form.control
   });
+
+  // useWatch em vez de form.watch(): o watch() devolve funcao nao memoizavel
+  // e o React Compiler pula a otimizacao do componente inteiro por causa dele.
+  const watchedExercises = useWatch({ control: form.control, name: 'exercises' })
 
   function onSubmit(data: FormTrainingType) {
     startTransition(async () => {
@@ -154,7 +164,12 @@ function FormTrining({ idTraining, initialData, exercises, takenDays = [] }: {
             </span>
           </div>
 
-          {fields.map((field, index) => (
+          {fields.map((field, index) => {
+            const selectedId = watchedExercises?.[index]?.exerciseId
+            // Enquanto nada foi escolhido, mostra a carga: a maioria usa
+            const showLoad = !selectedId || usesLoadById.get(selectedId) !== false
+
+            return (
             <Card key={field.id}>
               <CardContent className='p-3 space-y-3'>
                 <div className='flex items-center gap-2'>
@@ -192,7 +207,7 @@ function FormTrining({ idTraining, initialData, exercises, takenDays = [] }: {
                   )}
                 />
 
-                <div className='grid grid-cols-3 gap-2'>
+                <div className={showLoad ? 'grid grid-cols-3 gap-2' : 'grid grid-cols-2 gap-2'}>
                   <FormField control={form.control}
                     name={`exercises.${index}.sets`}
                     render={({ field: setsField }) => (
@@ -219,26 +234,29 @@ function FormTrining({ idTraining, initialData, exercises, takenDays = [] }: {
                       </FormItem>
                     )}
                   />
-                  <FormField control={form.control}
-                    name={`exercises.${index}.targetWeight`}
-                    render={({ field: weightField }) => (
-                      <FormItem>
-                        <FormLabel className='text-xs text-muted-foreground'>
-                          Carga
-                        </FormLabel>
-                        <Input type='number' min={0} step='0.5' inputMode='decimal'
-                          placeholder='—'
-                          {...weightField}
-                          value={weightField.value ?? ''}
-                          className='h-11 text-center tabular' />
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {showLoad && (
+                    <FormField control={form.control}
+                      name={`exercises.${index}.targetWeight`}
+                      render={({ field: weightField }) => (
+                        <FormItem>
+                          <FormLabel className='text-xs text-muted-foreground'>
+                            Carga
+                          </FormLabel>
+                          <Input type='number' min={0} step='0.5' inputMode='decimal'
+                            placeholder='—'
+                            {...weightField}
+                            value={weightField.value ?? ''}
+                            className='h-11 text-center tabular' />
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                 </div>
               </CardContent>
             </Card>
-          ))}
+            )
+          })}
 
           <Button type='button' variant='outline' className='w-full h-11'
             // eslint-disable-next-line @typescript-eslint/no-explicit-any

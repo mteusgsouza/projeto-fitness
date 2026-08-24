@@ -1,6 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 
-const isProtectedRoute = createRouteMatcher(['/', '/training(.*)', '/history(.*)', '/workout(.*)', '/exercises(.*)', '/settings(.*)'])
+const isProtectedRoute = createRouteMatcher(['/', '/training(.*)', '/history(.*)', '/workout(.*)', '/exercises(.*)', '/settings(.*)', '/profile(.*)'])
 
 // Next 16 substituiu a convenção `middleware.ts` por `proxy.ts`.
 export default clerkMiddleware(async (auth, req) => {

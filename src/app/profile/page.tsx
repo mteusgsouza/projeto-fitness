@@ -1,0 +1,122 @@
+import React from 'react'
+import Link from 'next/link'
+import { ChevronRight, LayoutList, Settings } from 'lucide-react'
+import { currentUser } from '@clerk/nextjs/server'
+import prisma from '@/lib/db'
+import MainLayout from '@/components/main-layout'
+import PageHeader from '@/components/page-header'
+import ExerciseProgressChart from '@/components/charts/exercise-progress'
+import { FrequencyChart } from '@/components/charts/weekly-charts'
+import { getExerciseProgress, getTrackedExercises, getWeeklyStats } from '@/actions/stats/_actions'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Card, CardContent } from '@/components/ui/card'
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className='min-w-0'>
+      <p className='label-tec text-muted-foreground'>{label}</p>
+      <p className='truncate text-xl font-semibold tabular'>{value}</p>
+    </div>
+  )
+}
+
+export default async function ProfilePage() {
+  const user = await currentUser()
+  if (!user) return null
+
+  const [weekly, tracked, totalSessions] = await Promise.all([
+    getWeeklyStats(12),
+    getTrackedExercises(),
+    prisma.workoutSession.count({ where: { userId: user.id } }),
+  ])
+
+  const firstExercise = tracked[0]
+  const initialProgress = firstExercise
+    ? await getExerciseProgress(firstExercise.id)
+    : []
+
+  const initials = [user.firstName, user.lastName]
+    .filter(Boolean)
+    .map((part) => part![0])
+    .join('')
+    .toUpperCase() || '?'
+
+  return (
+    <MainLayout>
+      <div className='container mx-auto px-4 py-4 md:px-6 md:py-6 space-y-4'>
+        <PageHeader title='Perfil' description='Sua evolução' />
+
+        <Card>
+          <CardContent className='flex items-center gap-3 p-4'>
+            <span className='flex size-12 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground tabular font-semibold'>
+              {initials}
+            </span>
+            <div className='min-w-0'>
+              <p className='truncate text-lg font-semibold'>{user.fullName ?? user.firstName}</p>
+              <p className='truncate text-sm text-muted-foreground'>
+                {user.primaryEmailAddress?.emailAddress}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className='grid grid-cols-3 gap-3 p-4'>
+            <Stat label='Sessões' value={String(totalSessions)} />
+            <Stat label='Exercícios' value={String(tracked.length)} />
+            <Stat label='12 semanas'
+              value={String(weekly.reduce((sum, point) => sum + point.sessions, 0))} />
+          </CardContent>
+        </Card>
+
+        {totalSessions === 0 ? (
+          <Alert>
+            <AlertTitle>Nada para mostrar ainda</AlertTitle>
+            <AlertDescription>
+              Registre um treino e a evolução por exercício aparece aqui.
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <div className='grid gap-4 md:grid-cols-2'>
+            {firstExercise && (
+              <ExerciseProgressChart
+                exercises={tracked}
+                initialExerciseId={firstExercise.id}
+                initialData={initialProgress}
+              />
+            )}
+            <FrequencyChart data={weekly} />
+          </div>
+        )}
+
+        <div className='grid gap-2'>
+          <Link href='/exercises'>
+            <Card className='transition-colors hover:bg-muted active:bg-muted'>
+              <CardContent className='flex items-center gap-3 p-4'>
+                <LayoutList className='size-5 shrink-0 text-muted-foreground' />
+                <div className='min-w-0 flex-1'>
+                  <p className='font-medium'>Catálogo de exercícios</p>
+                  <p className='text-sm text-muted-foreground'>Todos os exercícios disponíveis</p>
+                </div>
+                <ChevronRight className='size-4 shrink-0 text-muted-foreground' />
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link href='/settings'>
+            <Card className='transition-colors hover:bg-muted active:bg-muted'>
+              <CardContent className='flex items-center gap-3 p-4'>
+                <Settings className='size-5 shrink-0 text-muted-foreground' />
+                <div className='min-w-0 flex-1'>
+                  <p className='font-medium'>Configurações</p>
+                  <p className='text-sm text-muted-foreground'>Tema e cor de destaque</p>
+                </div>
+                <ChevronRight className='size-4 shrink-0 text-muted-foreground' />
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
+      </div>
+    </MainLayout>
+  )
+}

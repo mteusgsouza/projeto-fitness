@@ -11,11 +11,12 @@ import {
 } from '@/components/ui/chart'
 import { Picker, type PickerGroup } from '@/components/picker'
 
-type TrackedExercise = { id: string; name: string }
+export type TrackedExercise = { id: string; name: string; usesLoad: boolean }
 
-const config = {
-  maxWeight: { label: 'Carga máxima', color: 'hsl(var(--chart-1))' },
-} satisfies ChartConfig
+/** Separador decimal pt-BR, sem casas desnecessarias: 42,5 / 15 */
+function num(value: number) {
+  return value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })
+}
 
 const axis = {
   tickLine: false,
@@ -33,8 +34,29 @@ function ExerciseProgressChart({ exercises, initialExerciseId, initialData }: {
   const [data, setData] = React.useState(initialData)
   const [isPending, startTransition] = React.useTransition()
 
+  const selected = exercises.find((exercise) => exercise.id === exerciseId)
+
+  /**
+   * Exercício com carga progride em kg; peso corporal e cardio progridem em
+   * repetições — carga ali é "não se aplica", não zero.
+   */
+  const usesLoad = selected?.usesLoad !== false
+  const metric = usesLoad ? 'maxWeight' : 'maxReps'
+  const unit = usesLoad ? 'kg' : 'reps'
+
+  const config = {
+    [metric]: {
+      label: usesLoad ? 'Carga máxima' : 'Repetições máximas',
+      color: 'hsl(var(--chart-1))',
+    },
+  } satisfies ChartConfig
+
   const groups: PickerGroup[] = React.useMemo(() => [{
-    options: exercises.map((exercise) => ({ value: exercise.id, label: exercise.name })),
+    options: exercises.map((exercise) => ({
+      value: exercise.id,
+      label: exercise.name,
+      hint: exercise.usesLoad ? undefined : 'peso corporal',
+    })),
   }], [exercises])
 
   function handleChange(value: string) {
@@ -44,8 +66,9 @@ function ExerciseProgressChart({ exercises, initialExerciseId, initialData }: {
     })
   }
 
-  const best = data.length ? Math.max(...data.map((point) => point.maxWeight)) : 0
-  const delta = data.length ? data[data.length - 1].maxWeight - data[0].maxWeight : 0
+  const values = data.map((point) => usesLoad ? point.maxWeight : point.maxReps)
+  const best = values.length ? Math.max(...values) : 0
+  const delta = values.length ? values[values.length - 1] - values[0] : 0
   const enoughData = data.length >= 2
 
   return (
@@ -53,15 +76,13 @@ function ExerciseProgressChart({ exercises, initialExerciseId, initialData }: {
       <CardHeader className='pb-2 space-y-3'>
         <div className='flex items-start justify-between gap-2'>
           <div className='min-w-0'>
-            <CardTitle className='text-sm font-medium text-muted-foreground'>
-              Progressão
-            </CardTitle>
+            <CardTitle className='label-tec text-muted-foreground'>Progressão</CardTitle>
             <p className='text-2xl font-semibold tabular tracking-tight'>
-              {best > 0 ? `${best} kg` : '—'}
+              {best > 0 ? `${num(best)} ${unit}` : '—'}
             </p>
             <p className='text-xs text-muted-foreground'>
               {enoughData
-                ? 'recorde de carga'
+                ? (usesLoad ? 'recorde de carga' : 'recorde de repetições')
                 : 'registre este exercício em mais de um treino'}
             </p>
           </div>
@@ -71,7 +92,7 @@ function ExerciseProgressChart({ exercises, initialExerciseId, initialData }: {
             </span>
             {enoughData && delta !== 0 && (
               <Badge variant={delta > 0 ? 'default' : 'secondary'} className='tabular'>
-                {delta > 0 ? '+' : ''}{delta} kg
+                {delta > 0 ? '+' : ''}{num(delta)} {unit}
               </Badge>
             )}
           </div>
@@ -95,15 +116,12 @@ function ExerciseProgressChart({ exercises, initialExerciseId, initialData }: {
           <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
             <CartesianGrid vertical={false} strokeDasharray='3 3' />
             <XAxis dataKey='label' {...axis} interval='preserveStartEnd' minTickGap={24} />
-            <YAxis {...axis} width={36} tickFormatter={(value: number) => `${value}kg`} />
+            <YAxis {...axis} width={40} tickFormatter={(value: number) => `${num(value)}${usesLoad ? 'kg' : ''}`} />
             <ChartTooltip content={
-              <ChartTooltipContent
-                formatter={(value) => `${Number(value)} kg`}
-                indicator='dot'
-              />
+              <ChartTooltipContent formatter={(value) => `${num(Number(value))} ${unit}`} indicator='dot' />
             } />
-            <Line type='monotone' dataKey='maxWeight' stroke='var(--color-maxWeight)'
-              strokeWidth={2.5} dot={{ r: 3, strokeWidth: 0, fill: 'var(--color-maxWeight)' }}
+            <Line type='monotone' dataKey={metric} stroke='var(--color-chart-1)'
+              strokeWidth={2.5} dot={{ r: 3, strokeWidth: 0, fill: 'var(--color-chart-1)' }}
               activeDot={{ r: 5 }} />
           </LineChart>
         </ChartContainer>

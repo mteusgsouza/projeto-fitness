@@ -31,6 +31,16 @@ model Exercise {
   equipment   String?
   /// iniciante | intermediario | avancado
   level       String  @default("iniciante")
+  /// Se o exercício é executado com carga externa. Falso para peso corporal
+  /// e cardio: nesses, carga não é zero, é "não se aplica" — a variante com
+  /// peso é outro item do catálogo (agachamento livre vs. agachamento com barra).
+  /// Governa o campo de carga nos formulários e quem entra na progressão de peso.
+  usesLoad    Boolean @default(true)
+  /// Como executar, em uma ou duas frases.
+  description String?
+  /// Musculos efetivamente trabalhados, do principal para os auxiliares.
+  /// Mais especifico que muscleGroup, que e so a gaveta do catalogo.
+  muscles     String[]
   userId      String?
   user        User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
 

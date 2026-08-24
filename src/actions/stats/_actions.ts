@@ -2,7 +2,10 @@
 
 import { currentUser } from '@clerk/nextjs/server'
 import prisma from '@/lib/db'
-import { eachWeekOfInterval, format, startOfWeek, subWeeks } from 'date-fns'
+import {
+  addMonths, eachDayOfInterval, eachWeekOfInterval, endOfMonth, endOfWeek,
+  format, isSameDay, isSameMonth, startOfMonth, startOfWeek, subWeeks,
+} from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { totalVolume } from '@/lib/workout'
 
@@ -19,6 +22,8 @@ export type ProgressPoint = {
   date: string
   label: string
   maxWeight: number
+  /** Maior numero de reps numa serie da sessao — e a progressao do peso corporal */
+  maxReps: number
   volume: number
   reps: number
 }
@@ -71,12 +76,16 @@ export async function getTrackedExercises() {
 
   const logs = await prisma.setLog.findMany({
     where: { session: { userId: user.id } },
-    select: { exerciseId: true, exercise: { select: { name: true } } },
+    select: { exerciseId: true, exercise: { select: { name: true, usesLoad: true } } },
     distinct: ['exerciseId'],
   })
 
   return logs
-    .map((log) => ({ id: log.exerciseId, name: log.exercise.name }))
+    .map((log) => ({
+      id: log.exerciseId,
+      name: log.exercise.name,
+      usesLoad: log.exercise.usesLoad,
+    }))
     .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
 }
 
@@ -114,7 +123,66 @@ export async function getExerciseProgress(exerciseId: string): Promise<ProgressP
       date: session.performedAt.toISOString(),
       label: format(session.performedAt, "d 'de' MMM", { locale: ptBR }),
       maxWeight: Math.max(...session.sets.map((set) => set.weight)),
+      maxReps: Math.max(...session.sets.map((set) => set.reps)),
       volume: Math.round(totalVolume(session.sets)),
       reps: session.sets.reduce((total, set) => total + set.reps, 0),
     }))
+}
+
+export type CalendarDay = {
+  date: string
+  dayOfMonth: number
+  inMonth: boolean
+  isToday: boolean
+  sessions: number
+  labels: string[]
+}
+
+export type TrainingCalendar = {
+  monthLabel: string
+  offset: number
+  total: number
+  days: CalendarDay[]
+}
+
+/**
+ * Calendario de treinos do mes. A grade cobre semanas inteiras (segunda a
+ * domingo), entao inclui dias vizinhos marcados com inMonth=false.
+ * `offset` navega meses: 0 e o atual, -1 o anterior.
+ */
+export async function getTrainingCalendar(offset = 0): Promise<TrainingCalendar | null> {
+  const user = await currentUser()
+  if (!user) return null
+
+  const base = addMonths(new Date(), offset)
+  const monthStart = startOfMonth(base)
+  const monthEnd = endOfMonth(base)
+  const gridStart = startOfWeek(monthStart, WEEK_OPTIONS)
+  const gridEnd = endOfWeek(monthEnd, WEEK_OPTIONS)
+
+  const sessions = await prisma.workoutSession.findMany({
+    where: { userId: user.id, performedAt: { gte: gridStart, lte: gridEnd } },
+    select: { performedAt: true, trainingLabel: true },
+    orderBy: { performedAt: 'asc' },
+  })
+
+  const today = new Date()
+  const days = eachDayOfInterval({ start: gridStart, end: gridEnd }).map((day) => {
+    const doDia = sessions.filter((session) => isSameDay(session.performedAt, day))
+    return {
+      date: format(day, 'yyyy-MM-dd'),
+      dayOfMonth: day.getDate(),
+      inMonth: isSameMonth(day, monthStart),
+      isToday: isSameDay(day, today),
+      sessions: doDia.length,
+      labels: doDia.map((session) => session.trainingLabel),
+    }
+  })
+
+  return {
+    monthLabel: format(monthStart, "MMMM 'de' yyyy", { locale: ptBR }),
+    offset,
+    total: sessions.filter((session) => isSameMonth(session.performedAt, monthStart)).length,
+    days,
+  }
 }

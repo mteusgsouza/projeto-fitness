@@ -4,6 +4,8 @@ export type ExerciseOption = {
   muscleGroup: string
   equipment: string | null
   level: string
+  /** Falso para peso corporal e cardio: carga não se aplica, não é zero. */
+  usesLoad: boolean
   userId: string | null
 }
 

@@ -3,7 +3,7 @@ import React from 'react'
 import { AlertCircle, ChevronRight } from 'lucide-react'
 import prisma from '@/lib/db'
 import { currentUser } from '@clerk/nextjs/server'
-import { formatShortDate, formatVolume, totalVolume } from '@/lib/workout'
+import { formatShortDate } from '@/lib/workout'
 import { Alert, AlertDescription, AlertTitle } from './ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 
@@ -19,7 +19,7 @@ async function HistoricosCard() {
       id: true,
       trainingLabel: true,
       performedAt: true,
-      setLogs: { select: { reps: true, weight: true } },
+      _count: { select: { setLogs: true } },
     },
   })
 
@@ -55,7 +55,7 @@ async function HistoricosCard() {
                 </span>
                 <span className='shrink-0 text-xs tabular text-muted-foreground'>
                   {formatShortDate(session.performedAt)}
-                  {' · '}{formatVolume(totalVolume(session.setLogs))}
+                  {' · '}{session._count.setLogs} séries
                 </span>
                 <ChevronRight className='size-4 shrink-0 text-muted-foreground' />
               </Link>

@@ -4,7 +4,7 @@ import { format } from 'date-fns'
 import { ChevronRight, ClipboardList, Play } from 'lucide-react'
 import { currentUser } from '@clerk/nextjs/server'
 import prisma from '@/lib/db'
-import { formatSessionDate, formatVolume, totalVolume } from '@/lib/workout'
+import { formatSessionDate } from '@/lib/workout'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -22,7 +22,7 @@ async function HistoricoPage() {
       id: true,
       trainingLabel: true,
       performedAt: true,
-      setLogs: { select: { reps: true, weight: true, exerciseId: true } },
+      setLogs: { select: { exerciseId: true } },
     },
   })
 
@@ -69,7 +69,6 @@ async function HistoricoPage() {
                       <p className='text-sm text-muted-foreground tabular'>
                         {exerciseCount} {exerciseCount === 1 ? 'exercício' : 'exercícios'}
                         {' · '}{session.setLogs.length} {session.setLogs.length === 1 ? 'série' : 'séries'}
-                        {' · '}{formatVolume(totalVolume(session.setLogs))}
                       </p>
                     </div>
                     <ChevronRight className='size-4 shrink-0 text-muted-foreground' />

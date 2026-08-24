@@ -20,13 +20,35 @@ function toNumberOrNull(value: unknown) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null
 }
 
-function toPrescription(formData: FormTrainingType) {
+/**
+ * Carrega usesLoad dos exercicios da ficha e, de quebra, confirma que todos
+ * pertencem ao catalogo global ou ao proprio usuario.
+ * Retorna null quando algum id nao e acessivel.
+ */
+async function loadUsage(formData: FormTrainingType, userId: string) {
+  const ids = [...new Set(formData.exercises.map((exercise) => exercise.exerciseId))]
+  const found = await prisma.exercise.findMany({
+    where: { id: { in: ids }, OR: [{ userId: null }, { userId }] },
+    select: { id: true, usesLoad: true },
+  })
+  if (found.length !== ids.length) return null
+  return new Map(found.map((exercise) => [exercise.id, exercise.usesLoad]))
+}
+
+/**
+ * Zera a carga alvo de exercicio que nao usa carga externa. A interface ja
+ * esconde o campo, mas trocar o exercicio de uma linha podia deixar para tras
+ * o valor do anterior — carga em peso corporal nao e zero, e "nao se aplica".
+ */
+function toPrescription(formData: FormTrainingType, usage: Map<string, boolean>) {
   return formData.exercises.map((exercise, index) => ({
     exerciseId: exercise.exerciseId,
     order: index,
     sets: Number(exercise.sets),
     reps: Number(exercise.reps),
-    targetWeight: toNumberOrNull(exercise.targetWeight),
+    targetWeight: usage.get(exercise.exerciseId) === false
+      ? null
+      : toNumberOrNull(exercise.targetWeight),
   }))
 }
 
@@ -54,12 +76,15 @@ export async function createTraining(formData: FormTrainingType): Promise<Action
     }
   }
 
+  const usage = await loadUsage(formData, user.id)
+  if (!usage) return { ok: false, message: 'Algum exercício não pertence ao seu catálogo' }
+
   await prisma.training.create({
     data: {
       userId: user.id,
       label: formData.label,
       trainingDay: formData.trainingDay,
-      exercises: { createMany: { data: toPrescription(formData) } },
+      exercises: { createMany: { data: toPrescription(formData, usage) } },
     },
   })
 
@@ -88,6 +113,9 @@ export async function updateTraining(id: string, formData: FormTrainingType): Pr
     }
   }
 
+  const usage = await loadUsage(formData, user.id)
+  if (!usage) return { ok: false, message: 'Algum exercício não pertence ao seu catálogo' }
+
   // Recriar a prescrição é seguro: o histórico de execução vive em SetLog e
   // aponta para Exercise, não para estas linhas.
   await prisma.$transaction([
@@ -97,7 +125,7 @@ export async function updateTraining(id: string, formData: FormTrainingType): Pr
       data: {
         label: formData.label,
         trainingDay: formData.trainingDay,
-        exercises: { createMany: { data: toPrescription(formData) } },
+        exercises: { createMany: { data: toPrescription(formData, usage) } },
       },
     }),
   ])

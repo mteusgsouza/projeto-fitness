@@ -24,7 +24,7 @@ async function WorkoutPage({
     include: {
       exercises: {
         orderBy: { order: 'asc' },
-        include: { exercise: { select: { id: true, name: true, equipment: true } } },
+        include: { exercise: { select: { id: true, name: true, equipment: true, usesLoad: true } } },
       },
     },
   })
@@ -67,6 +67,7 @@ async function WorkoutPage({
       exerciseId: item.exerciseId,
       name: item.exercise.name,
       equipment: item.exercise.equipment,
+      usesLoad: item.exercise.usesLoad,
       prescribedSets: item.sets,
       prescribedReps: item.reps,
       targetWeight: item.targetWeight,

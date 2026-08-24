@@ -2,9 +2,10 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BicepsFlexed, ClipboardList, House, LayoutList, Play } from 'lucide-react'
+import { BicepsFlexed, ClipboardList, House, Play, UserRound } from 'lucide-react'
 import React from 'react'
 import { cn } from '@/lib/utils'
+import { activeNavHref } from '@/lib/nav'
 
 const left = [
   { href: '/', label: 'Início', Icon: House },
@@ -13,13 +14,8 @@ const left = [
 
 const right = [
   { href: '/history', label: 'Histórico', Icon: ClipboardList },
-  { href: '/exercises', label: 'Exercícios', Icon: LayoutList },
+  { href: '/profile', label: 'Perfil', Icon: UserRound },
 ]
-
-function isActive(pathname: string, href: string) {
-  if (href === '/') return pathname === '/'
-  return pathname === href || pathname.startsWith(`${href}/`)
-}
 
 /**
  * Cinco colunas com a ação no centro exato. Com quatro colunas (3 destinos
@@ -27,18 +23,19 @@ function isActive(pathname: string, href: string) {
  */
 function BottomNavbar() {
   const pathname = usePathname()
-  const actionActive = pathname === '/history/create' || pathname.startsWith('/workout/')
+  // Um único destino ativo: /history/create não pode acender junto com /history
+  const active = activeNavHref(pathname)
 
   return (
     <nav className='md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-border bg-card/90 backdrop-blur-lg pb-safe'>
       <div className='grid grid-cols-5 items-end h-16'>
         {left.map((item) => (
-          <NavItem key={item.href} {...item} active={isActive(pathname, item.href)} />
+          <NavItem key={item.href} {...item} active={active === item.href} />
         ))}
 
         <div className='flex items-end justify-center h-16'>
           <Link href='/history/create' aria-label='Iniciar treino'
-            aria-current={actionActive ? 'page' : undefined}
+            aria-current={active === '/history/create' ? 'page' : undefined}
             className={cn(
               'mb-3 flex size-14 items-center justify-center rounded-full',
               'bg-primary text-primary-foreground shadow-lg shadow-primary/25',
@@ -49,7 +46,7 @@ function BottomNavbar() {
         </div>
 
         {right.map((item) => (
-          <NavItem key={item.href} {...item} active={isActive(pathname, item.href)} />
+          <NavItem key={item.href} {...item} active={active === item.href} />
         ))}
       </div>
     </nav>
