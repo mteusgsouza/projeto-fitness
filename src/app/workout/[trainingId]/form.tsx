@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { formatNumber } from '@/lib/workout'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -55,6 +56,23 @@ function initialSets(exercise: WorkoutExercise): SetRow[] {
     weight: exercise.targetWeight === null ? '' : String(exercise.targetWeight),
     rpe: '',
   }))
+}
+
+/**
+ * Resume as series numa linha: "16kg×10 · 16kg×10 · 14kg×8".
+ * Sem carga, o "reps" vai uma vez so no fim para nao repetir a palavra:
+ * "12 · 12 · 10 reps". Devolve null quando nao ha serie preenchida.
+ */
+function formatSets(
+  sets: { weight: number | string; reps: number | string }[],
+  usesLoad: boolean,
+) {
+  const validas = sets.filter((set) => Number(set.reps) > 0)
+  if (!validas.length) return null
+  if (usesLoad) {
+    return validas.map((set) => `${formatNumber(Number(set.weight) || 0)}kg×${set.reps}`).join(' · ')
+  }
+  return `${validas.map((set) => set.reps).join(' · ')} reps`
 }
 
 function WorkoutForm({ trainingId, exercises }: {
@@ -256,9 +274,6 @@ function WorkoutForm({ trainingId, exercises }: {
         const sets = rows[exerciseId] ?? []
         const isCollapsed = !!collapsed[exerciseId]
         const isDone = !!done[exerciseId]
-        // Carga so entra no resumo quando e a mesma em todas as series
-        const cargas = new Set(sets.map((set) => set.weight).filter((peso) => peso !== ''))
-        const cargaUnica = exercise.usesLoad && cargas.size === 1 ? [...cargas][0] : null
         // Sem carga, a coluna some e as demais reocupam a largura
         const cols = exercise.usesLoad
           ? 'grid grid-cols-[1.5rem_1fr_1fr_3.25rem_2.25rem] items-center gap-2'
@@ -317,18 +332,15 @@ function WorkoutForm({ trainingId, exercises }: {
                 {isCollapsed && (
                   <span className='text-xs tabular text-muted-foreground'>
                     {sets.length} {sets.length === 1 ? 'série' : 'séries'}
-                    {cargaUnica && ` · ${cargaUnica}kg`}
+                    {formatSets(sets, exercise.usesLoad)
+                      && ` · ${formatSets(sets, exercise.usesLoad)}`}
                   </span>
                 )}
               </div>
 
               {!isCollapsed && exercise.previousSets.length > 0 && (
                 <p className='pl-7 text-xs text-muted-foreground'>
-                  Última vez: {exercise.previousSets
-                    .map((set) => exercise.usesLoad
-                      ? `${set.weight}kg×${set.reps}`
-                      : `${set.reps} reps`)
-                    .join(' · ')}
+                  Última vez: {formatSets(exercise.previousSets, exercise.usesLoad)}
                 </p>
               )}
             </CardHeader>
