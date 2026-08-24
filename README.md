@@ -31,7 +31,7 @@ Construído com Next.js (App Router), autenticação via Clerk e persistência e
 - `/workout/[trainingId]` registra o treino **série a série**: carga, repetições e RPE (esforço percebido, 1–10) independentes por série.
 - Os campos vêm **pré-preenchidos com a última sessão** daquele exercício — ou com a prescrição da ficha, se for a primeira vez.
 - A prescrição é valor inicial, não trava: dá para mudar a carga só da última série, adicionar séries além do previsto ou parar antes.
-- Cada exercício **recolhe e expande**, e dá para **reordenar** a execução com as setas. Recolher tudo deixa a lista curta o bastante para reordenar sem rolar a tela. A ordem vale só para a sessão: a ficha não muda.
+- Cada exercício **recolhe e expande**, e dá para **reordenar arrastando** pela alça. Só a alça arrasta, para rolar a tela e digitar nos campos não dispararem o gesto; o teclado também reordena (foco na alça, espaço para levantar, setas para mover). Recolher tudo deixa a lista curta o bastante para reordenar sem rolar. A ordem vale só para a sessão: a ficha não muda.
 - **Só o que você marcar como feito é gravado.** Tudo começa desmarcado, e você marca conforme executa — o cabeçalho mostra "3 de 6 exercícios" com barra de progresso. Fez 5 de 6? Só os 5 entram na sessão, e um diálogo lista o que ficará de fora antes de gravar. Fez menos séries que o previsto? Remova as que não fez dentro do exercício.
 - Permite **lançamento retroativo** (data e hora editáveis) e observações.
 - Se a carga executada divergir da ficha, o app oferece atualizar a prescrição no fim da sessão.
@@ -107,7 +107,7 @@ Limitações conhecidas:
 |---|---|
 | Framework | Next.js 16.3 (App Router, Server Actions, Turbopack) |
 | Linguagem | TypeScript 5 |
-| UI | React 19, Tailwind CSS 4, shadcn/ui, Radix UI, Vaul, Lucide, Sonner |
+| UI | React 19, Tailwind CSS 4, shadcn/ui, Radix UI, Vaul, dnd-kit, Lucide, Sonner |
 | Gráficos | Recharts 2 (via shadcn/chart) |
 | Autenticação | Clerk 7 (Core 3) |
 | Banco | PostgreSQL (Neon) via Prisma 6 |

@@ -3,14 +3,22 @@
 import React from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Check, ChevronDown, ChevronUp, ListCollapse, Plus, Trash2 } from 'lucide-react'
+import { Check, ListCollapse } from 'lucide-react'
+import {
+  DndContext, KeyboardSensor, PointerSensor, closestCenter,
+  useSensor, useSensors, type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext, arrayMove, sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
 import { createWorkoutSession, syncPrescriptionWeights } from '@/actions/workout/_actions'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { formatNumber } from '@/lib/workout'
+import ExerciseCard from './exercise-card'
+import type { SetRow, WorkoutExercise } from './types'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,19 +30,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 
-export type WorkoutExercise = {
-  exerciseId: string
-  name: string
-  equipment: string | null
-  prescribedSets: number
-  prescribedReps: number
-  targetWeight: number | null
-  /** Falso para peso corporal e cardio: a coluna de carga nem aparece. */
-  usesLoad: boolean
-  previousSets: { reps: number; weight: number; rpe: number | null }[]
-}
-
-type SetRow = { reps: string; weight: string; rpe: string }
+export type { WorkoutExercise } from './types'
 
 function toLocalInputValue(date: Date) {
   const pad = (value: number) => String(value).padStart(2, '0')
@@ -56,23 +52,6 @@ function initialSets(exercise: WorkoutExercise): SetRow[] {
     weight: exercise.targetWeight === null ? '' : String(exercise.targetWeight),
     rpe: '',
   }))
-}
-
-/**
- * Resume as series numa linha: "16kg×10 · 16kg×10 · 14kg×8".
- * Sem carga, o "reps" vai uma vez so no fim para nao repetir a palavra:
- * "12 · 12 · 10 reps". Devolve null quando nao ha serie preenchida.
- */
-function formatSets(
-  sets: { weight: number | string; reps: number | string }[],
-  usesLoad: boolean,
-) {
-  const validas = sets.filter((set) => Number(set.reps) > 0)
-  if (!validas.length) return null
-  if (usesLoad) {
-    return validas.map((set) => `${formatNumber(Number(set.weight) || 0)}kg×${set.reps}`).join(' · ')
-  }
-  return `${validas.map((set) => set.reps).join(' · ')} reps`
 }
 
 function WorkoutForm({ trainingId, exercises }: {
@@ -108,15 +87,23 @@ function WorkoutForm({ trainingId, exercises }: {
     [exercises],
   )
 
-  function move(exerciseId: string, delta: number) {
+  /**
+   * Arrastar so comeca depois de 8px de movimento: sem isso, um toque para
+   * marcar ou rolar viraria arrasto. O sensor de teclado mantem a reordenacao
+   * possivel sem mouse, que era a duvida contra largar as setas.
+   */
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
     setOrder((current) => {
-      const index = current.indexOf(exerciseId)
-      const target = index + delta
-      if (index < 0 || target < 0 || target >= current.length) return current
-      const next = [...current]
-      next[index] = current[target]
-      next[target] = current[index]
-      return next
+      const from = current.indexOf(String(active.id))
+      const to = current.indexOf(String(over.id))
+      return from < 0 || to < 0 ? current : arrayMove(current, from, to)
     })
   }
 
@@ -268,133 +255,43 @@ function WorkoutForm({ trainingId, exercises }: {
         </div>
       </div>
 
-      {order.map((exerciseId, position) => {
-        const exercise = byId.get(exerciseId)
-        if (!exercise) return null
-        const sets = rows[exerciseId] ?? []
-        const isCollapsed = !!collapsed[exerciseId]
-        const isDone = !!done[exerciseId]
-        // Sem carga, a coluna some e as demais reocupam a largura
-        const cols = exercise.usesLoad
-          ? 'grid grid-cols-[1.5rem_1fr_1fr_3.25rem_2.25rem] items-center gap-2'
-          : 'grid grid-cols-[1.5rem_1fr_3.25rem_2.25rem] items-center gap-2'
-        return (
-          <Card key={exerciseId} className={isDone ? 'border-primary/40' : undefined}>
-            <CardHeader className='p-3 pb-2 space-y-1'>
-              <div className='flex items-start gap-2'>
-                <button type='button' onClick={() => toggleDone(exerciseId)}
-                  aria-pressed={isDone}
-                  aria-label={isDone
-                    ? `Desmarcar ${exercise.name}`
-                    : `Marcar ${exercise.name} como feito`}
-                  className='-ml-1 flex size-11 shrink-0 items-center justify-center'>
-                  <span className={isDone
-                    ? 'flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground'
-                    : 'flex size-6 items-center justify-center rounded-full border-2 border-muted-foreground/40 text-xs tabular text-muted-foreground'}>
-                    {isDone ? <Check className='size-4' /> : position + 1}
-                  </span>
-                </button>
-
-                <button type='button' onClick={() => toggle(exerciseId)}
-                  aria-expanded={!isCollapsed}
-                  className='min-w-0 flex-1 text-left'>
-                  <CardTitle className='flex items-center gap-1.5 text-base leading-tight'>
-                    <span className='min-w-0 truncate'>{exercise.name}</span>
-                    {isCollapsed
-                      ? <ChevronDown className='size-4 shrink-0 text-muted-foreground' />
-                      : <ChevronUp className='size-4 shrink-0 text-muted-foreground' />}
-                  </CardTitle>
-                </button>
-
-                <div className='flex shrink-0 items-center gap-1'>
-                  <Button type='button' size='icon' variant='ghost'
-                    aria-label={`Mover ${exercise.name} para cima`}
-                    disabled={position === 0}
-                    onClick={() => move(exerciseId, -1)}
-                    className='size-8 text-muted-foreground hover:text-foreground'>
-                    <ChevronUp className='size-4' />
-                  </Button>
-                  <Button type='button' size='icon' variant='ghost'
-                    aria-label={`Mover ${exercise.name} para baixo`}
-                    disabled={position === order.length - 1}
-                    onClick={() => move(exerciseId, 1)}
-                    className='size-8 text-muted-foreground hover:text-foreground'>
-                    <ChevronDown className='size-4' />
-                  </Button>
-                </div>
-              </div>
-
-              <div className='flex flex-wrap items-center gap-x-2 gap-y-1 pl-7'>
-                <Badge variant='secondary' className='tabular'>
-                  {exercise.prescribedSets}×{exercise.prescribedReps}
-                  {exercise.targetWeight !== null && ` · ${exercise.targetWeight}kg`}
-                </Badge>
-                {isCollapsed && (
-                  <span className='text-xs tabular text-muted-foreground'>
-                    {sets.length} {sets.length === 1 ? 'série' : 'séries'}
-                    {formatSets(sets, exercise.usesLoad)
-                      && ` · ${formatSets(sets, exercise.usesLoad)}`}
-                  </span>
-                )}
-              </div>
-
-              {!isCollapsed && exercise.previousSets.length > 0 && (
-                <p className='pl-7 text-xs text-muted-foreground'>
-                  Última vez: {formatSets(exercise.previousSets, exercise.usesLoad)}
-                </p>
-              )}
-            </CardHeader>
-
-            <CardContent className={isCollapsed ? 'hidden' : 'p-3 pt-0'}>
-              <div className={`${cols} px-0.5 pb-1 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground`}>
-                <span>#</span>
-                {exercise.usesLoad && <span>Carga</span>}
-                <span>Reps</span>
-                <span>RPE</span>
-                <span className='sr-only'>Remover</span>
-              </div>
-
-              <div className='space-y-2'>
-                {sets.map((set, index) => (
-                  <div key={index} className={cols}>
-                    <span className='text-sm tabular text-muted-foreground'>{index + 1}</span>
-                    {exercise.usesLoad && (
-                      <Input type='number' min={0} step='0.5' inputMode='decimal' placeholder='0'
-                        aria-label={`Carga da série ${index + 1} de ${exercise.name}`}
-                        value={set.weight}
-                        onChange={(event) => updateSet(exerciseId, index, 'weight', event.target.value)}
-                        className='h-11 text-center tabular text-base' />
-                    )}
-                    <Input type='number' min={0} inputMode='numeric' placeholder='0'
-                      aria-label={`Repetições da série ${index + 1} de ${exercise.name}`}
-                      value={set.reps}
-                      onChange={(event) => updateSet(exerciseId, index, 'reps', event.target.value)}
-                      className='h-11 text-center tabular text-base' />
-                    <Input type='number' min={1} max={10} inputMode='numeric' placeholder='—'
-                      aria-label={`Esforço percebido da série ${index + 1} de ${exercise.name}`}
-                      value={set.rpe}
-                      onChange={(event) => updateSet(exerciseId, index, 'rpe', event.target.value)}
-                      className='h-11 px-1 text-center tabular' />
-                    <Button type='button' size='icon' variant='ghost'
-                      aria-label={`Remover série ${index + 1}`}
-                      disabled={sets.length === 1}
-                      onClick={() => removeSet(exerciseId, index)}
-                      className='size-9 text-muted-foreground hover:bg-destructive/10 hover:text-destructive'>
-                      <Trash2 className='size-4' />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-
-              <Button type='button' variant='outline' size='sm'
-                onClick={() => addSet(exerciseId)}
-                className='mt-3 w-full'>
-                <Plus className='size-4' /> Adicionar série
-              </Button>
-            </CardContent>
-          </Card>
-        )
-      })}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+        accessibility={{
+          announcements: {
+            onDragStart: ({ active }) => `Movendo ${byId.get(String(active.id))?.name}`,
+            onDragOver: ({ over }) => over ? `Sobre ${byId.get(String(over.id))?.name}` : '',
+            onDragEnd: ({ over }) => over ? `Solto em ${byId.get(String(over.id))?.name}` : 'Movimento cancelado',
+            onDragCancel: () => 'Movimento cancelado',
+          },
+        }}
+      >
+        <SortableContext items={order} strategy={verticalListSortingStrategy}>
+          <div className='space-y-3'>
+            {order.map((exerciseId, position) => {
+              const exercise = byId.get(exerciseId)
+              if (!exercise) return null
+              return (
+                <ExerciseCard
+                  key={exerciseId}
+                  exercise={exercise}
+                  position={position}
+                  sets={rows[exerciseId] ?? []}
+                  isCollapsed={!!collapsed[exerciseId]}
+                  isDone={!!done[exerciseId]}
+                  onToggleCollapse={toggle}
+                  onToggleDone={toggleDone}
+                  onUpdateSet={updateSet}
+                  onAddSet={addSet}
+                  onRemoveSet={removeSet}
+                />
+              )
+            })}
+          </div>
+        </SortableContext>
+      </DndContext>
 
       <Card>
         <CardContent className='p-3 grid gap-3 md:grid-cols-2'>
