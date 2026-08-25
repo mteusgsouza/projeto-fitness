@@ -57,7 +57,8 @@ Construído com Next.js (App Router), autenticação via Clerk e persistência e
 - **Mobile primeiro**: barra inferior fixa com indicação de página ativa e botão de ação em destaque; no desktop, navegação no topo.
 - **Seletores viram drawer no mobile** (bottom sheet do Vaul) e modal no desktop, com busca que ignora acentos — "triceps" acha "Tríceps".
 - Campos de toque com 44px de altura e sem setas em `input[type=number]`, para digitar carga rápido na academia.
-- **Tema claro/escuro** com paleta esmeralda própria e detecção da preferência do sistema (`next-themes`), mais **cor de destaque** trocável em `/settings` (esmeralda, lima, ciano, âmbar, magenta). A escolha é aplicada por um script inline antes da hidratação, para a tela não piscar na cor errada.
+- **Tema claro/escuro** com paleta própria e detecção da preferência do sistema (`next-themes`), mais **cor de destaque** trocável em `/settings` (lima, ciano, âmbar, magenta). A base neutra acompanha o destaque: o matiz de fundo, cartão, borda e texto sai de `--base-h`, definido por cada cor — sem isso, magenta cairia sobre um fundo esverdeado. A escolha é aplicada por um script inline antes da hidratação, para a tela não piscar na cor errada.
+- **Instalável como app** (PWA): manifest em `standalone`, ícones `any` e `maskable`, apple touch icon e atalhos de toque longo. Instalado, abre sem barra do navegador. Não há service worker, então o app **não funciona offline**.
 - `loading.tsx` com skeletons nas rotas que consultam o banco — o Neon responde em ~120ms por query e a navegação não fica travada em branco.
 - Componentes **shadcn/ui** sobre Radix UI, ícones Lucide, notificações via Sonner.
 
@@ -86,7 +87,7 @@ Pelo mesmo motivo, `WorkoutSession.trainingId` é opcional com `SetNull` e a ses
 
 ## Status do projeto
 
-Versão **1.0.0** — o ciclo completo (montar ficha, executar, histórico, progressão) funciona e está em produção. O histórico de mudanças fica em [CHANGELOG.md](CHANGELOG.md).
+Versão **1.1.0** — o ciclo completo (montar ficha, executar, histórico, progressão) funciona e está em produção. O histórico de mudanças fica em [CHANGELOG.md](CHANGELOG.md).
 
 Limitações conhecidas:
 
@@ -99,8 +100,8 @@ Limitações conhecidas:
 | Medidas corporais | Só treino é registrado — sem peso corporal, medidas ou fotos. |
 | `createRouteMatcher` | Depreciado no Clerk 7: a recomendação passou a ser checar autorização em cada página/rota em vez de casar caminhos no proxy. Funciona hoje, mas sai no próximo major. |
 | Exercícios personalizados | O schema já suporta (`Exercise.userId`), mas ainda não há tela para criar. |
-| `footer.tsx` | O componente existe e não é importado por ninguém. |
 | Componentes shadcn sem uso | Alguns arquivos em `components/ui/` não são importados por ninguém, e os pacotes Radix correspondentes seguem no `package.json`. |
+| Funcionamento offline | O app é instalável, mas não há service worker: sem rede, não carrega. |
 | Testes | O projeto não tem testes automatizados. |
 
 ---

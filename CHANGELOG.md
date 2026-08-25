@@ -3,6 +3,40 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 o projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
+## [1.1.0] — 2026-08-25
+
+O app passa a ser instalável na tela de início, com marca própria, e a cor de
+destaque deixa de brigar com o fundo.
+
+### Adicionado
+
+- **PWA instalável**: manifest com `display: standalone`, ícones em 192 e 512
+  (mais as variantes `maskable`, que o Android recorta em círculo sem cortar o
+  desenho), apple touch icon e `appleWebApp.capable` — sem esse último o iOS
+  abre o atalho dentro do Safari, com barra de endereço e tudo. Atalhos de
+  toque longo para "Treinar agora" e "Meus treinos".
+- **Marca própria**: prancheta de ficha com halter, em traço no padrão Lucide.
+  Uma geometria só serve o ícone instalado e a marca dentro do app; como ela é
+  pintada em `currentColor`, acompanha tema e cor de destaque sem precisar de
+  uma variante por tema. Aparece no cabeçalho (mobile e desktop) e no rodapé.
+- **Rodapé de crédito** no desktop, com autoria, ano e link do GitHub. Fica
+  oculto no mobile, onde a barra inferior e o botão central ocupam essa faixa.
+
+### Corrigido
+
+- **A base neutra seguia presa no verde ao trocar a cor de destaque.** Fundo,
+  cartão, borda, texto e malha estavam cravados no matiz 160, e os blocos de
+  destaque só trocavam `--primary`, `--accent` e `--ring` — então escolher
+  magenta ou âmbar dava botão colorido sobre uma base esverdeada. Agora o
+  matiz da base é uma variável (`--base-h`) que cada destaque define, e o
+  conjunto muda junto. Lima continua em 160, então o tema original não mudou.
+- **O texto dos botões de destaque saía verde-escuro em qualquer cor**, porque
+  `--primary-foreground` estava fixo em `160 39% 5%` nos blocos do tema escuro.
+
+### Removido
+
+- `favicon.ico` do scaffold do Next, que sobrescrevia a marca nova na aba.
+
 ## [1.0.0] — 2026-08-24
 
 Primeira versão completa: o ciclo inteiro do app funciona de ponta a ponta —
