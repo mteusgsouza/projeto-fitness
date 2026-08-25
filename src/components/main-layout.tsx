@@ -1,6 +1,7 @@
 import React from 'react'
 import Header from './header'
 import BottomNavbar from './bottom-nav'
+import Footer from './footer'
 
 function MainLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -13,6 +14,8 @@ function MainLayout({ children }: { children: React.ReactNode }) {
       <main className='relative flex-1 pb-28 md:pb-10'>
         {children}
       </main>
+      {/* só aparece no md+; no mobile a barra inferior ocupa essa faixa */}
+      <Footer />
       <BottomNavbar />
     </div>
   )
