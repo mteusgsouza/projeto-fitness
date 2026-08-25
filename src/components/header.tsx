@@ -7,6 +7,7 @@ import HeaderNavigationMenu from './navgation-menu'
 import HeaderTitle from './header-title'
 import { ModeToggle } from './mode-toggle'
 import { Button } from './ui/button'
+import Logo from './logo'
 
 // O Clerk Core 3 removeu <SignedIn>/<SignedOut>; em server component
 // a checagem passa a ser feita direto com auth().
@@ -16,7 +17,13 @@ async function Header() {
   return (
     <header className='sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-lg'>
       <div className='container mx-auto flex h-14 items-center gap-2 px-4 md:h-16 md:px-6'>
-        <div className='hidden md:flex'>
+        <div className='hidden md:flex md:items-center md:gap-4'>
+          {/* No mobile quem carrega a marca é o HeaderTitle; aqui ela ocupa o
+              canto esquerdo, e o texto sai quando o menu aperta a barra. */}
+          <Link href='/' aria-label='Projeto Fitness' className='flex items-center gap-2'>
+            <Logo className='size-6 text-primary' />
+            <span className='hidden lg:inline font-semibold tracking-tight'>Projeto Fitness</span>
+          </Link>
           <HeaderNavigationMenu />
         </div>
         <div className='md:hidden min-w-0 flex-1'>

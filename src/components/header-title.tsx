@@ -4,6 +4,7 @@ import React from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from './ui/button'
+import Logo from './logo'
 
 const TITLES: { match: (path: string) => boolean; title: string }[] = [
   { match: (p) => p === '/', title: 'Projeto Fitness' },
@@ -39,6 +40,8 @@ function HeaderTitle() {
           <ArrowLeft className='size-5' />
         </Button>
       )}
+      {/* Na raiz não há botão de voltar, então a marca ocupa o lugar dele. */}
+      {isRoot && <Logo className='size-5 text-primary' />}
       <span className='font-semibold truncate'>{titleFor(pathname)}</span>
     </div>
   )

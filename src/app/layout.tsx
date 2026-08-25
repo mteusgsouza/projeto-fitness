@@ -18,8 +18,19 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  applicationName: "Projeto Fitness",
   title: "Projeto Fitness",
   description: "Monte seus treinos, registre cada série e acompanhe sua evolução",
+  // O <link rel="manifest"> sai automaticamente de src/app/manifest.ts.
+  appleWebApp: {
+    // Sem isso o iOS abre o atalho dentro do Safari, com barra e tudo.
+    capable: true,
+    title: "Projeto Fitness",
+    // 'default' porque só a barra inferior trata safe-area; 'black-translucent'
+    // jogaria o conteúdo por baixo da barra de status.
+    statusBarStyle: "default",
+  },
+  formatDetection: { telephone: false },
 };
 
 // viewportFit: 'cover' é o que libera env(safe-area-inset-*) usado pela barra inferior
