@@ -3,6 +3,35 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 o projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
+## [1.2.0] — 2026-08-25
+
+O app passa a convidar para a instalação e a abrir sem rede.
+
+### Adicionado
+
+- **Convite de instalação dentro do app.** Nenhum navegador sugere instalar
+  sozinho — o banner automático do Chrome saiu na versão 76, e o Safari nunca
+  teve API de instalação. Agora o próprio app captura `beforeinstallprompt` e
+  mostra um convite dispensável, que não volta depois de recusado (volta se o
+  app for instalado e removido).
+- **Service worker** (`public/sw.js`) com cache da casca: estático versionado
+  do Next e ícones. Além do offline, ele é o que destrava o convite acima — o
+  Chrome só dispara `beforeinstallprompt` em página controlada por um service
+  worker com fetch handler.
+- **Tela `/offline`**, servida quando uma navegação falha por falta de rede, no
+  lugar do erro do navegador.
+
+### Notas
+
+- **Offline abre o app, não os seus dados.** Fichas e histórico são
+  renderizados no servidor a cada visita; sem rede, o que aparece é a tela de
+  `/offline`. Guardar esse HTML em cache gravaria dados pessoais no aparelho e
+  serviria uma versão velha na visita seguinte, então o service worker não
+  cacheia página autenticada. Consultar treino offline exigiria replicar os
+  dados no cliente e sincronizar — outra empreitada.
+- No **iOS não há convite**: o Safari não expõe nenhuma API de instalação. Lá o
+  caminho continua sendo Compartilhar › Adicionar à Tela de Início.
+
 ## [1.1.0] — 2026-08-25
 
 O app passa a ser instalável na tela de início, com marca própria, e a cor de

@@ -58,7 +58,8 @@ Construído com Next.js (App Router), autenticação via Clerk e persistência e
 - **Seletores viram drawer no mobile** (bottom sheet do Vaul) e modal no desktop, com busca que ignora acentos — "triceps" acha "Tríceps".
 - Campos de toque com 44px de altura e sem setas em `input[type=number]`, para digitar carga rápido na academia.
 - **Tema claro/escuro** com paleta própria e detecção da preferência do sistema (`next-themes`), mais **cor de destaque** trocável em `/settings` (lima, ciano, âmbar, magenta). A base neutra acompanha o destaque: o matiz de fundo, cartão, borda e texto sai de `--base-h`, definido por cada cor — sem isso, magenta cairia sobre um fundo esverdeado. A escolha é aplicada por um script inline antes da hidratação, para a tela não piscar na cor errada.
-- **Instalável como app** (PWA): manifest em `standalone`, ícones `any` e `maskable`, apple touch icon e atalhos de toque longo. Instalado, abre sem barra do navegador. Não há service worker, então o app **não funciona offline**.
+- **Instalável como app** (PWA): manifest em `standalone`, ícones `any` e `maskable`, apple touch icon e atalhos de toque longo. Instalado, abre sem barra do navegador. O app **convida** para instalar quando o navegador sinaliza que é possível — nenhum navegador faz isso sozinho hoje (o banner automático do Chrome saiu na versão 76). No iOS não há convite: o Safari não expõe API de instalação, e o caminho é Compartilhar › Adicionar à Tela de Início.
+- **Service worker** (`public/sw.js`) com cache da casca — estático do Next e ícones — para o app abrir sem rede, com uma tela `/offline` própria no lugar do erro do navegador. Ele **não** cacheia HTML autenticado: seria dado pessoal gravado no aparelho e desatualizado na visita seguinte.
 - `loading.tsx` com skeletons nas rotas que consultam o banco — o Neon responde em ~120ms por query e a navegação não fica travada em branco.
 - Componentes **shadcn/ui** sobre Radix UI, ícones Lucide, notificações via Sonner.
 
@@ -87,7 +88,7 @@ Pelo mesmo motivo, `WorkoutSession.trainingId` é opcional com `SetNull` e a ses
 
 ## Status do projeto
 
-Versão **1.1.0** — o ciclo completo (montar ficha, executar, histórico, progressão) funciona e está em produção. O histórico de mudanças fica em [CHANGELOG.md](CHANGELOG.md).
+Versão **1.2.0** — o ciclo completo (montar ficha, executar, histórico, progressão) funciona e está em produção. O histórico de mudanças fica em [CHANGELOG.md](CHANGELOG.md).
 
 Limitações conhecidas:
 
@@ -101,7 +102,7 @@ Limitações conhecidas:
 | `createRouteMatcher` | Depreciado no Clerk 7: a recomendação passou a ser checar autorização em cada página/rota em vez de casar caminhos no proxy. Funciona hoje, mas sai no próximo major. |
 | Exercícios personalizados | O schema já suporta (`Exercise.userId`), mas ainda não há tela para criar. |
 | Componentes shadcn sem uso | Alguns arquivos em `components/ui/` não são importados por ninguém, e os pacotes Radix correspondentes seguem no `package.json`. |
-| Funcionamento offline | O app é instalável, mas não há service worker: sem rede, não carrega. |
+| Consulta offline | O app abre sem rede, mas mostra a tela `/offline` — fichas e histórico vêm do servidor a cada visita. Ver treino offline exigiria replicar os dados no cliente e sincronizar. |
 | Testes | O projeto não tem testes automatizados. |
 
 ---
