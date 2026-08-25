@@ -2,6 +2,7 @@ import React from 'react'
 import Header from './header'
 import BottomNavbar from './bottom-nav'
 import Footer from './footer'
+import InstallPrompt from './install-prompt'
 
 function MainLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -17,6 +18,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
       {/* só aparece no md+; no mobile a barra inferior ocupa essa faixa */}
       <Footer />
       <BottomNavbar />
+      <InstallPrompt />
     </div>
   )
 }
