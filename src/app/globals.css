@@ -69,21 +69,29 @@
     O acento é trocável em /settings via [data-accent] mais abaixo.
   */
   :root {
-    --background: 160 20% 96%;
-    --foreground: 163 30% 10%;
+    /*
+      Matiz da base neutra. Todo o cinza do app (fundo, cartão, borda, texto)
+      é tingido por ele, então trocar o acento leva a base junto — sem isso o
+      acento magenta cairia sobre um fundo esverdeado. Cada acento redefine
+      --base-h no bloco de acentos; 160 é o valor original, do lima.
+    */
+    --base-h: 160;
+
+    --background: var(--base-h) 20% 96%;
+    --foreground: var(--base-h) 30% 10%;
     --card: 0 0% 100%;
-    --card-foreground: 163 30% 10%;
+    --card-foreground: var(--base-h) 30% 10%;
     --popover: 0 0% 100%;
-    --popover-foreground: 163 30% 10%;
-    --secondary: 160 14% 92%;
-    --secondary-foreground: 163 30% 14%;
-    --muted: 160 14% 92%;
-    --muted-foreground: 160 10% 40%;
+    --popover-foreground: var(--base-h) 30% 10%;
+    --secondary: var(--base-h) 14% 92%;
+    --secondary-foreground: var(--base-h) 30% 14%;
+    --muted: var(--base-h) 14% 92%;
+    --muted-foreground: var(--base-h) 10% 40%;
     --destructive: 0 72% 45%;
     --destructive-foreground: 0 0% 100%;
-    --border: 160 14% 86%;
-    --input: 160 14% 84%;
-    --grid: 160 16% 90%;
+    --border: var(--base-h) 14% 86%;
+    --input: var(--base-h) 14% 84%;
+    --grid: var(--base-h) 16% 90%;
 
     --chart-2: 199 89% 40%;
     --chart-3: 38 92% 42%;
@@ -94,21 +102,21 @@
   }
 
   .dark {
-    --background: 160 39% 5%;
-    --foreground: 158 32% 93%;
-    --card: 160 30% 8%;
-    --card-foreground: 158 32% 93%;
-    --popover: 160 30% 9%;
-    --popover-foreground: 158 32% 93%;
-    --secondary: 160 30% 12%;
-    --secondary-foreground: 158 32% 93%;
-    --muted: 160 30% 12%;
-    --muted-foreground: 160 12% 55%;
+    --background: var(--base-h) 39% 5%;
+    --foreground: var(--base-h) 32% 93%;
+    --card: var(--base-h) 30% 8%;
+    --card-foreground: var(--base-h) 32% 93%;
+    --popover: var(--base-h) 30% 9%;
+    --popover-foreground: var(--base-h) 32% 93%;
+    --secondary: var(--base-h) 30% 12%;
+    --secondary-foreground: var(--base-h) 32% 93%;
+    --muted: var(--base-h) 30% 12%;
+    --muted-foreground: var(--base-h) 12% 55%;
     --destructive: 0 68% 52%;
     --destructive-foreground: 0 0% 100%;
-    --border: 160 26% 16%;
-    --input: 160 26% 20%;
-    --grid: 160 28% 11%;
+    --border: var(--base-h) 26% 16%;
+    --input: var(--base-h) 26% 20%;
+    --grid: var(--base-h) 28% 11%;
 
     --chart-2: 199 88% 58%;
     --chart-3: 38 94% 60%;
@@ -126,6 +134,7 @@
   */
   :root,
   :root[data-accent='lima'] {
+    --base-h: 160;
     --primary: 84 72% 28%;
     --primary-foreground: 0 0% 100%;
     --accent: 84 45% 88%;
@@ -136,14 +145,15 @@
   .dark,
   .dark[data-accent='lima'] {
     --primary: 82 100% 62%;
-    --primary-foreground: 160 39% 5%;
-    --accent: 160 39% 18%;
+    --primary-foreground: var(--base-h) 39% 5%;
+    --accent: var(--base-h) 39% 18%;
     --accent-foreground: 82 100% 68%;
     --ring: 82 90% 50%;
     --chart-1: 82 100% 62%;
   }
 
   :root[data-accent='ciano'] {
+    --base-h: 205;
     --primary: 195 92% 30%;
     --primary-foreground: 0 0% 100%;
     --accent: 195 60% 90%;
@@ -153,14 +163,15 @@
   }
   .dark[data-accent='ciano'] {
     --primary: 190 95% 58%;
-    --primary-foreground: 160 39% 5%;
-    --accent: 195 45% 18%;
+    --primary-foreground: var(--base-h) 39% 5%;
+    --accent: var(--base-h) 39% 18%;
     --accent-foreground: 190 95% 66%;
     --ring: 190 85% 48%;
     --chart-1: 190 95% 58%;
   }
 
   :root[data-accent='ambar'] {
+    --base-h: 28;
     --primary: 30 90% 36%;
     --primary-foreground: 0 0% 100%;
     --accent: 36 80% 90%;
@@ -170,14 +181,15 @@
   }
   .dark[data-accent='ambar'] {
     --primary: 38 96% 60%;
-    --primary-foreground: 160 39% 5%;
-    --accent: 36 45% 18%;
+    --primary-foreground: var(--base-h) 39% 5%;
+    --accent: var(--base-h) 39% 18%;
     --accent-foreground: 38 96% 68%;
     --ring: 38 88% 50%;
     --chart-1: 38 96% 60%;
   }
 
   :root[data-accent='magenta'] {
+    --base-h: 322;
     --primary: 330 74% 38%;
     --primary-foreground: 0 0% 100%;
     --accent: 330 60% 92%;
@@ -187,8 +199,8 @@
   }
   .dark[data-accent='magenta'] {
     --primary: 330 90% 66%;
-    --primary-foreground: 160 39% 5%;
-    --accent: 330 40% 20%;
+    --primary-foreground: var(--base-h) 39% 5%;
+    --accent: var(--base-h) 39% 18%;
     --accent-foreground: 330 90% 74%;
     --ring: 330 82% 56%;
     --chart-1: 330 90% 66%;
