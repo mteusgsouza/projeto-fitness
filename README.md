@@ -16,7 +16,7 @@ Construído com Next.js (App Router), autenticação via Clerk e persistência e
 
 ### Catálogo de exercícios
 - **88 exercícios pré-cadastrados** pelo seed, em 10 grupos musculares (peito, costas, pernas, glúteos, ombros, bíceps, tríceps, antebraço, core, cardio), cada um com equipamento e nível (iniciante/intermediário/avançado).
-- Cada exercício tem **página própria** em `/exercises/[id]`: como executar, músculos trabalhados (do principal para os auxiliares), nível, equipamento e o seu histórico naquele movimento — sessões, recorde, última vez e a **curva de progressão**. Dá para chegar nela clicando no exercício dentro da ficha, no detalhe de uma sessão ou pelo catálogo. O recorde respeita a carga: kg para quem usa, repetições para peso corporal.
+- Cada exercício tem **página própria** em `/exercises/[id]`: como executar, músculos trabalhados (do principal para os auxiliares), nível, equipamento e o seu histórico naquele movimento — sessões, recorde, última vez e a **curva de progressão**. Dá para chegar nela clicando no exercício dentro da ficha, no detalhe de uma sessão ou pelo catálogo. O recorde segue a unidade do exercício: kg para quem usa carga, repetições para peso corporal, tempo para cardio e isometria.
 - **A unidade é propriedade do exercício** (`tracking`): 79 exercícios são medidos em repetições e 9 em tempo (os 7 de cardio mais prancha isométrica e prancha lateral). Nos de tempo, a ficha e a execução pedem **min e seg** no lugar de reps, e a progressão é medida em tempo, não em repetições. Esteira, bicicleta, elíptico e remo ainda aceitam **distância em km** (`usesDistance`), que é opcional.
 - **Carga é propriedade do exercício** (`usesLoad`): 62 usam carga externa, 26 não (peso corporal e cardio). Nos que não usam, o campo de carga nem aparece — carga ali é "não se aplica", não zero. A variante com peso é outro item do catálogo: *Agachamento livre sem peso* e *Agachamento livre* (barra) são exercícios distintos.
 - O catálogo é global (`userId` nulo); a mesma tabela aceita exercícios personalizados por usuário.
@@ -24,12 +24,12 @@ Construído com Next.js (App Router), autenticação via Clerk e persistência e
 
 ### Fichas de treino
 - **Uma ficha por dia da semana**, garantido por constraint no banco. Dias já ocupados aparecem desabilitados no formulário.
-- Cada exercício da ficha tem séries, repetições e carga alvo opcional.
-- Cadastrar (`/training/create`), editar (`/training/update/[id]`) e excluir, com lista dinâmica de exercícios.
+- Cada exercício da ficha tem séries, a medida conforme o `tracking` (**repetições** ou **min/seg**) e carga alvo opcional. Os campos trocam sozinhos quando você escolhe o exercício.
+- Cadastrar (`/training/create`), editar (`/training/update/[id]`) e excluir, com lista dinâmica de exercícios que **reordena arrastando** pela alça.
 - Validação com **Zod** em schema compartilhado entre cliente e servidor.
 
 ### Execução do treino
-- `/workout/[trainingId]` registra o treino **série a série**: carga, repetições e RPE (esforço percebido, 1–10) independentes por série.
+- `/workout/[trainingId]` registra o treino **série a série**: carga, a medida do exercício (repetições, ou min/seg e km no cardio) e RPE (esforço percebido, 1–10) independentes por série.
 - Os campos vêm **pré-preenchidos com a última sessão** daquele exercício — ou com a prescrição da ficha, se for a primeira vez.
 - A prescrição é valor inicial, não trava: dá para mudar a carga só da última série, adicionar séries além do previsto ou parar antes.
 - Cada exercício **recolhe e expande**, e dá para **reordenar arrastando** pela alça. Só a alça arrasta, para rolar a tela e digitar nos campos não dispararem o gesto; o teclado também reordena (foco na alça, espaço para levantar, setas para mover). Recolher tudo deixa a lista curta o bastante para reordenar sem rolar. A ordem vale só para a sessão: a ficha não muda.
@@ -50,13 +50,15 @@ Construído com Next.js (App Router), autenticação via Clerk e persistência e
 ### Perfil: evolução
 - **Progressão por exercício**, com seletor, recorde e variação desde o primeiro registro. Exercício com carga progride em **kg**; peso corporal progride em **repetições**; cardio e isométricos progridem em **tempo**.
 - **Frequência** por semana nas últimas 12 semanas (semanas sem treino aparecem como zero, para o gráfico não mentir).
+- Sessões, exercícios distintos já treinados e **há quanto tempo treina**, contado do primeiro treino registrado ("14 dias", "5 meses", "1 ano e 4 meses").
 - Atalhos para o catálogo de exercícios e as configurações.
 
 ### Interface
 - **Mobile primeiro**: barra inferior fixa com indicação de página ativa e botão de ação em destaque; no desktop, navegação no topo.
 - **Seletores viram drawer no mobile** (bottom sheet do Vaul) e modal no desktop, com busca que ignora acentos — "triceps" acha "Tríceps".
 - Campos de toque com 44px de altura e sem setas em `input[type=number]`, para digitar carga rápido na academia.
-- **Tema claro/escuro** com paleta esmeralda própria e detecção da preferência do sistema (`next-themes`).
+- **Tema claro/escuro** com paleta esmeralda própria e detecção da preferência do sistema (`next-themes`), mais **cor de destaque** trocável em `/settings` (esmeralda, lima, ciano, âmbar, magenta). A escolha é aplicada por um script inline antes da hidratação, para a tela não piscar na cor errada.
+- `loading.tsx` com skeletons nas rotas que consultam o banco — o Neon responde em ~120ms por query e a navegação não fica travada em branco.
 - Componentes **shadcn/ui** sobre Radix UI, ícones Lucide, notificações via Sonner.
 
 ---
@@ -84,6 +86,8 @@ Pelo mesmo motivo, `WorkoutSession.trainingId` é opcional com `SetNull` e a ses
 
 ## Status do projeto
 
+Versão **1.0.0** — o ciclo completo (montar ficha, executar, histórico, progressão) funciona e está em produção. O histórico de mudanças fica em [CHANGELOG.md](CHANGELOG.md).
+
 Limitações conhecidas:
 
 | Item | Situação |
@@ -91,11 +95,11 @@ Limitações conhecidas:
 | Descanso entre séries | Não há cronômetro nem registro do tempo de descanso. |
 | Descrições dos exercícios | Escritas com base em prática comum de academia, sem revisão de profissional de educação física. Servem de referência, não de prescrição. |
 | Metas e periodização | Não há definição de meta de carga nem sugestão automática de progressão. |
+| Prescrição de tempo | No fim da sessão o app oferece atualizar a **carga** da ficha quando ela diverge do executado, mas não faz o equivalente para duração — correr 25min numa ficha de 20min não sugere nada. |
 | Medidas corporais | Só treino é registrado — sem peso corporal, medidas ou fotos. |
 | `createRouteMatcher` | Depreciado no Clerk 7: a recomendação passou a ser checar autorização em cada página/rota em vez de casar caminhos no proxy. Funciona hoje, mas sai no próximo major. |
 | Exercícios personalizados | O schema já suporta (`Exercise.userId`), mas ainda não há tela para criar. |
-| Bundle da home | Os gráficos levam a home a ~314 kB de First Load JS. Um `dynamic()` no recharts resolveria. |
-| `footer.tsx` | O componente existe, mas está comentado no `main-layout`. |
+| `footer.tsx` | O componente existe e não é importado por ninguém. |
 | Componentes shadcn sem uso | Alguns arquivos em `components/ui/` não são importados por ninguém, e os pacotes Radix correspondentes seguem no `package.json`. |
 | Testes | O projeto não tem testes automatizados. |
 
@@ -232,16 +236,19 @@ src/
     header, bottom-nav, page-header, header-title, treinos, ...
   lib/
     db.ts                singleton do Prisma Client
+    user.ts              ensureUser: espelha o usuário do Clerk na tabela User
     training-day.ts      dias da semana
     exercise.ts          grupos musculares e agrupamento do catálogo
-    workout.ts           volume e formatação de datas
+    workout.ts           formatação de séries, duração, datas e tempo de treino
+    progress.ts          em que unidade cada exercício progride (kg/reps/tempo)
     nav.ts               destinos e regra de item ativo
+    utils.ts             cn (clsx + tailwind-merge)
 ```
 
 ### Modelos
 
 - **User** — espelha o usuário do Clerk (o `id` é o ID do Clerk).
-- **Exercise** — catálogo. `userId` nulo = global; preenchido = personalizado. `usesLoad` diz se usa carga externa; `description` e `muscles` alimentam a página do exercício.
+- **Exercise** — catálogo. `userId` nulo = global; preenchido = personalizado. `usesLoad` diz se usa carga externa, `tracking` diz se a medida é `reps` ou `duration`, `usesDistance` libera o campo de km; `description` e `muscles` alimentam a página do exercício.
 - **Training** — a ficha de um dia da semana. Único por `[userId, trainingDay]`.
 - **TrainingExercise** — a prescrição: qual exercício, quantas séries, e `reps` **ou** `durationSeconds` conforme o `tracking` do exercício (nunca os dois), mais a carga alvo.
 - **WorkoutSession** — uma sessão realizada, com data e snapshot do nome da ficha.
@@ -250,6 +257,8 @@ src/
 ### Migrations
 
 O histórico começa com `20241215212752_first`. A migration `20250101000000_add_training_day_and_sets` existe para corrigir um drift: `Training.trainingDay` e `TrainingMenu.sets` tinham sido aplicadas com `prisma db push`, sem migration correspondente. Ela usa `ADD COLUMN IF NOT EXISTS` — no-op em bancos que já têm as colunas, correta em um banco novo.
+
+Depois dela vêm as da reestruturação: `..._exercise_catalog_and_set_logs` (separação plano/execução), `..._exercise_uses_load`, `..._exercise_description_muscles` e `..._exercise_duration_distance` (medida em tempo e distância).
 
 Como `postinstall` roda `prisma migrate deploy`, toda migration é aplicada automaticamente no build da Vercel.
 
