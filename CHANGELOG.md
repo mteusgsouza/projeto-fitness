@@ -3,6 +3,42 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/);
 o projeto segue [SemVer](https://semver.org/lang/pt-BR/).
 
+## [1.3.0] — 2026-08-25
+
+Dá para usar o app antes de ter conta.
+
+### Adicionado
+
+- **Modo visitante.** Um botão "Entrar sem login" abaixo do formulário do Clerk
+  abre o app sem cadastro. O visitante ganha um id `guest_<uuid>` guardado em
+  cookie `httpOnly` e vira um usuário como outro qualquer: como toda consulta
+  filtra por id, nenhuma delas precisou saber da diferença — quem resolve quem
+  está usando o app é `getSessionUser()`.
+- **Dados de exemplo na conta de teste**: três fichas (a primeira no dia de
+  hoje) e um mês de histórico com carga crescente. Aberto vazio, um app de
+  acompanhamento não mostra gráfico, calendário nem progressão, ou seja, não
+  mostra o que ele faz.
+- **As fichas do teste vão junto ao criar conta.** Na primeira navegação em que
+  a sessão do Clerk e o cookie de visitante coexistem, o `proxy.ts` desvia para
+  `/api/guest/claim`, que move os dados e encerra a sessão de visitante.
+- **Faixa do modo visitante** no topo e "Criar conta" no lugar do menu de
+  conta, para não confundir o teste com uma conta de verdade.
+
+### Notas
+
+- O **histórico de exemplo é descartado** na migração: carga e frequência de
+  mentira não podem virar a evolução real de ninguém. As fichas ficam, como
+  ponto de partida. A migração também só acontece em conta nova (sem ficha e
+  sem sessão) — numa conta que já treina, a ficha do visitante bateria na
+  unique `[userId, trainingDay]`.
+- **Sair do modo visitante apaga os dados.** São de teste, e o cookie é a única
+  forma de voltar a eles. Pelo mesmo motivo, quando um visitante novo entra o
+  app varre os visitantes com mais de 30 dias — o cookie deles já expirou, e o
+  que sobrou no banco é ficha e série que ninguém mais alcança.
+- O formato do id do visitante é validado a cada requisição. Sem isso bastaria
+  trocar o valor do cookie por um id de conta do Clerk (`user_...`) para ler o
+  treino de outra pessoa.
+
 ## [1.2.0] — 2026-08-25
 
 O app passa a convidar para a instalação e a abrir sem rede.

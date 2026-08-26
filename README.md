@@ -14,6 +14,13 @@ Construído com Next.js (App Router), autenticação via Clerk e persistência e
 - As rotas `/`, `/training/*`, `/history/*`, `/workout/*`, `/profile`, `/exercises` e `/settings` são protegidas no `proxy.ts`.
 - Na primeira visita, o usuário do Clerk é espelhado na tabela `User` via upsert.
 
+### Modo visitante (entrar sem login)
+- O botão **Entrar sem login**, abaixo do formulário do Clerk, abre o app sem cadastro: `POST /api/guest/start` (ou `GET`, para virar um link simples dentro do template do Clerk) cria a identidade do visitante e grava o id num cookie `httpOnly`.
+- O visitante é um usuário como outro qualquer — id no formato `guest_<uuid>`, num espaço de nomes que nunca colide com o do Clerk. Como tudo filtra por id, nenhuma consulta precisou saber da diferença: quem resolve é `getSessionUser()`, em `lib/user.ts`.
+- A conta de teste **já vem com dados**: três fichas (a primeira no dia de hoje) e um mês de histórico com carga crescente. Um app de acompanhamento aberto vazio não mostra gráfico, calendário nem progressão — ou seja, não mostra o que ele faz.
+- **Criou conta durante o teste?** As fichas montadas no modo visitante passam para a conta nova (`/api/guest/claim`, disparado pelo `proxy.ts` na primeira navegação em que as duas sessões coexistem). O histórico de exemplo é descartado: carga e frequência de mentira não podem virar a evolução real de ninguém. A migração só acontece em conta nova, sem ficha e sem sessão.
+- **Sair do modo visitante** (`POST /api/guest/exit`) apaga a conta de teste e tudo que ela tinha.
+
 ### Catálogo de exercícios
 - **88 exercícios pré-cadastrados** pelo seed, em 10 grupos musculares (peito, costas, pernas, glúteos, ombros, bíceps, tríceps, antebraço, core, cardio), cada um com equipamento e nível (iniciante/intermediário/avançado).
 - Cada exercício tem **página própria** em `/exercises/[id]`: como executar, músculos trabalhados (do principal para os auxiliares), nível, equipamento e o seu histórico naquele movimento — sessões, recorde, última vez e a **curva de progressão**. Dá para chegar nela clicando no exercício dentro da ficha, no detalhe de uma sessão ou pelo catálogo. O recorde segue a unidade do exercício: kg para quem usa carga, repetições para peso corporal, tempo para cardio e isometria.
@@ -214,7 +221,8 @@ prisma/
   exercise-details.ts    descrição e músculos de cada exercício
   migrations/
 src/
-  proxy.ts               Clerk - protege as rotas autenticadas
+  proxy.ts               Clerk - protege as rotas autenticadas e leva os
+                         dados do visitante para a conta recem-criada
   actions/
     training/            CRUD da ficha + validação Zod compartilhada
     workout/             createWorkoutSession, deleteWorkoutSession,
@@ -224,6 +232,7 @@ src/
     layout.tsx           ClerkProvider + ThemeProvider
     page.tsx             Home: treino de hoje + calendario
     (auth)/              sign-in, sign-up
+    api/guest/           start, exit, claim: ciclo de vida do modo visitante
     training/            listagem, create, update/[id], delete-dialog
     workout/[trainingId] execução série a série
     history/             listagem, [sessionId], create (escolha da ficha)
@@ -235,10 +244,17 @@ src/
     charts/              gráficos em Recharts
     picker.tsx           seletor: drawer no mobile, dialog no desktop
     training-calendar.tsx calendario mensal da home
+    guest-entry.tsx      botao "entrar sem login" nas telas de auth
+    guest-banner.tsx     faixa de aviso do modo visitante
     header, bottom-nav, page-header, header-title, treinos, ...
   lib/
     db.ts                singleton do Prisma Client
-    user.ts              ensureUser: espelha o usuário do Clerk na tabela User
+    user.ts              getSessionUser (conta do Clerk ou visitante) e
+                         ensureUser (espelha o usuário na tabela User)
+    guest-cookie.ts      cookie e formato do id do visitante — sem banco,
+                         porque o proxy também usa
+    guest.ts             abre, retoma e encerra a sessão de visitante
+    guest-demo.ts        dados de exemplo e migração para a conta nova
     training-day.ts      dias da semana
     exercise.ts          grupos musculares e agrupamento do catálogo
     workout.ts           formatação de séries, duração, datas e tempo de treino
