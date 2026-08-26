@@ -1,6 +1,6 @@
 import React from 'react'
 import { notFound } from 'next/navigation'
-import { currentUser } from '@clerk/nextjs/server'
+import { getSessionUser } from '@/lib/user'
 import FormTrining from '../../create/form'
 import prisma from '@/lib/db'
 import PageHeader from '@/components/page-header'
@@ -11,7 +11,7 @@ async function UpdatePage({
   params: Promise<{ id: string }>
 }) {
   const id = (await params).id
-  const user = await currentUser()
+  const user = await getSessionUser()
   if (!user) return null
 
   // Busca restrita ao dono: evita abrir o treino de outro usuário pelo id

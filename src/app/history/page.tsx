@@ -2,7 +2,7 @@ import React from 'react'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { ChevronRight, ClipboardList, Play } from 'lucide-react'
-import { currentUser } from '@clerk/nextjs/server'
+import { getSessionUser } from '@/lib/user'
 import prisma from '@/lib/db'
 import { formatSessionDate } from '@/lib/workout'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -12,7 +12,7 @@ import PageHeader from '@/components/page-header'
 import DeleteHistoryButton from './delete-history-button'
 
 async function HistoricoPage() {
-  const user = await currentUser()
+  const user = await getSessionUser()
   if (!user) return null
 
   const sessions = await prisma.workoutSession.findMany({

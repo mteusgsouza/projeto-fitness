@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { CalendarOff, Play } from "lucide-react";
-import { currentUser } from "@clerk/nextjs/server";
+import { getSessionUser } from "@/lib/user";
 import prisma from "@/lib/db";
 import HistoricosCard from "@/components/historicos";
 import MainLayout from "@/components/main-layout";
@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
 export default async function Home() {
-  const user = await currentUser()
+  const user = await getSessionUser()
   if (!user) return null
 
   const dayOfWeek = todayTrainingDay()

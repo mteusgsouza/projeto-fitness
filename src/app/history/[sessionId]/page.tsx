@@ -2,7 +2,7 @@ import React from 'react'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { notFound } from 'next/navigation'
-import { currentUser } from '@clerk/nextjs/server'
+import { getSessionUser } from '@/lib/user'
 import prisma from '@/lib/db'
 import { formatDuration, formatNumber, formatSessionDate } from '@/lib/workout'
 import { Badge } from '@/components/ui/badge'
@@ -23,7 +23,7 @@ async function SessionDetailPage({
   params: Promise<{ sessionId: string }>
 }) {
   const sessionId = (await params).sessionId
-  const user = await currentUser()
+  const user = await getSessionUser()
   if (!user) return null
 
   const session = await prisma.workoutSession.findFirst({

@@ -1,8 +1,7 @@
 'use server'
 
-import { currentUser } from '@clerk/nextjs/server'
+import { ensureUser, getSessionUser } from '@/lib/user'
 import prisma from '@/lib/db'
-import { ensureUser } from '@/lib/user'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 
@@ -94,7 +93,7 @@ export async function createWorkoutSession(input: SessionInput): Promise<ActionR
 }
 
 export async function deleteWorkoutSession(id: string): Promise<ActionResult> {
-  const user = await currentUser()
+  const user = await getSessionUser()
   if (!user) return { ok: false, message: 'Usuário não autenticado' }
 
   // SetLog cai por cascade
@@ -116,7 +115,7 @@ export async function syncPrescriptionWeights(
   trainingId: string,
   updates: { exerciseId: string; targetWeight: number }[]
 ): Promise<ActionResult> {
-  const user = await currentUser()
+  const user = await getSessionUser()
   if (!user) return { ok: false, message: 'Usuário não autenticado' }
 
   const training = await prisma.training.findFirst({

@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Dumbbell } from 'lucide-react'
-import { currentUser } from '@clerk/nextjs/server'
+import { getSessionUser } from '@/lib/user'
 import prisma from '@/lib/db'
 import { getExerciseProgress } from '@/actions/stats/_actions'
 import { ProgressLine } from '@/components/charts/progress-line'
@@ -25,7 +25,7 @@ export default async function ExerciseDetailPage({
   params: Promise<{ id: string }>
 }) {
   const id = (await params).id
-  const user = await currentUser()
+  const user = await getSessionUser()
   if (!user) return null
 
   // Catálogo global ou exercício próprio — nunca de outro usuário

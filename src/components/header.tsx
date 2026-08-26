@@ -1,18 +1,18 @@
 import React from 'react'
 import Link from 'next/link'
-import { Settings } from 'lucide-react'
+import { LogOut, Settings } from 'lucide-react'
 import { UserButton } from '@clerk/nextjs'
-import { auth } from '@clerk/nextjs/server'
 import HeaderNavigationMenu from './navgation-menu'
 import HeaderTitle from './header-title'
 import { ModeToggle } from './mode-toggle'
 import { Button } from './ui/button'
 import Logo from './logo'
+import { getSessionUser } from '@/lib/user'
 
 // O Clerk Core 3 removeu <SignedIn>/<SignedOut>; em server component
-// a checagem passa a ser feita direto com auth().
+// a checagem passa a ser feita direto na sessão.
 async function Header() {
-  const { userId } = await auth()
+  const user = await getSessionUser()
 
   return (
     <header className='sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-lg'>
@@ -32,15 +32,30 @@ async function Header() {
 
         <div className='ml-auto flex items-center gap-1'>
           <ModeToggle />
-          {userId ? (
+          {user && (
+            <Link href='/settings' passHref>
+              <Button variant='ghost' size='icon' className='size-9' aria-label='Configurações'>
+                <Settings className='size-[1.15rem]' />
+              </Button>
+            </Link>
+          )}
+
+          {/* Visitante não tem menu de conta: no lugar dele fica o caminho para
+              criar uma, que é o destino desse modo. */}
+          {user?.isGuest ? (
             <>
-              <Link href='/settings' passHref>
-                <Button variant='ghost' size='icon' className='size-9' aria-label='Configurações'>
-                  <Settings className='size-[1.15rem]' />
+              <form action='/api/guest/exit' method='post'>
+                <Button type='submit' variant='ghost' size='icon' className='size-9'
+                  aria-label='Sair do modo visitante'>
+                  <LogOut className='size-[1.15rem]' />
                 </Button>
+              </form>
+              <Link href='/sign-up' passHref>
+                <Button size='sm'>Criar conta</Button>
               </Link>
-              <UserButton />
             </>
+          ) : user ? (
+            <UserButton />
           ) : (
             <Link href='/sign-in' passHref>
               <Button size='sm'>Entrar</Button>

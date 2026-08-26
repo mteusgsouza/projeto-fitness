@@ -1,12 +1,12 @@
 import React from 'react'
-import { currentUser } from '@clerk/nextjs/server'
+import { getSessionUser } from '@/lib/user'
 import prisma from '@/lib/db'
 import MainLayout from '@/components/main-layout'
 import PageHeader from '@/components/page-header'
 import Catalog from './catalog'
 
 export default async function ExercisesPage() {
-  const user = await currentUser()
+  const user = await getSessionUser()
   if (!user) return null
 
   // Catálogo global + exercícios personalizados do próprio usuário

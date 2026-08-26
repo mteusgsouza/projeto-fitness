@@ -2,13 +2,13 @@ import Link from 'next/link'
 import React from 'react'
 import { AlertCircle, ChevronRight } from 'lucide-react'
 import prisma from '@/lib/db'
-import { currentUser } from '@clerk/nextjs/server'
+import { getSessionUser } from '@/lib/user'
 import { formatShortDate } from '@/lib/workout'
 import { Alert, AlertDescription, AlertTitle } from './ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 
 async function HistoricosCard() {
-  const user = await currentUser()
+  const user = await getSessionUser()
   if (!user) return null
 
   const sessions = await prisma.workoutSession.findMany({

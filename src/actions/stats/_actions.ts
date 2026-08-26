@@ -1,6 +1,6 @@
 'use server'
 
-import { currentUser } from '@clerk/nextjs/server'
+import { getSessionUser } from '@/lib/user'
 import prisma from '@/lib/db'
 import {
   addMonths, eachDayOfInterval, eachWeekOfInterval, endOfMonth, endOfWeek,
@@ -36,7 +36,7 @@ export type ProgressPoint = {
  * pulando direto de uma semana ativa para a outra.
  */
 export async function getWeeklyStats(weeks = 12): Promise<WeeklyPoint[]> {
-  const user = await currentUser()
+  const user = await getSessionUser()
   if (!user) return []
 
   const end = startOfWeek(new Date(), WEEK_OPTIONS)
@@ -73,7 +73,7 @@ export async function getWeeklyStats(weeks = 12): Promise<WeeklyPoint[]> {
 
 /** Exercícios que o usuário já executou pelo menos uma vez. */
 export async function getTrackedExercises() {
-  const user = await currentUser()
+  const user = await getSessionUser()
   if (!user) return []
 
   const logs = await prisma.setLog.findMany({
@@ -101,7 +101,7 @@ export async function getTrackedExercises() {
  * atingido, não a última série (que costuma cair por fadiga).
  */
 export async function getExerciseProgress(exerciseId: string): Promise<ProgressPoint[]> {
-  const user = await currentUser()
+  const user = await getSessionUser()
   if (!user || !exerciseId) return []
 
   const logs = await prisma.setLog.findMany({
@@ -159,7 +159,7 @@ export type TrainingCalendar = {
  * `offset` navega meses: 0 e o atual, -1 o anterior.
  */
 export async function getTrainingCalendar(offset = 0): Promise<TrainingCalendar | null> {
-  const user = await currentUser()
+  const user = await getSessionUser()
   if (!user) return null
 
   const base = addMonths(new Date(), offset)

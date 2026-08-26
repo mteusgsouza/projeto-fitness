@@ -1,5 +1,6 @@
 import React from 'react'
 import Header from './header'
+import GuestBanner from './guest-banner'
 import BottomNavbar from './bottom-nav'
 import Footer from './footer'
 import InstallPrompt from './install-prompt'
@@ -11,6 +12,7 @@ function MainLayout({ children }: { children: React.ReactNode }) {
       <div className='pointer-events-none fixed inset-0 grid-tec opacity-70' aria-hidden='true' />
 
       <Header />
+      <GuestBanner />
       {/* pb-28 no mobile reserva espaço para a barra inferior e o botão central */}
       <main className='relative flex-1 pb-28 md:pb-10'>
         {children}

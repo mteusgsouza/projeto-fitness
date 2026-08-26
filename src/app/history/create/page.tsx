@@ -1,7 +1,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { AlertCircle, ChevronRight } from 'lucide-react'
-import { currentUser } from '@clerk/nextjs/server'
+import { getSessionUser } from '@/lib/user'
 import prisma from '@/lib/db'
 import { trainingDayLabel } from '@/lib/training-day'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -11,7 +11,7 @@ import PageHeader from '@/components/page-header'
 
 /** Escolha de qual ficha treinar. O registro em si acontece em /workout/[id]. */
 async function StartWorkoutPage() {
-  const user = await currentUser()
+  const user = await getSessionUser()
   if (!user) return null
 
   const trainings = await prisma.training.findMany({

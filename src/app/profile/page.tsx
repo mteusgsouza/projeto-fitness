@@ -1,7 +1,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { ChevronRight, LayoutList, Settings } from 'lucide-react'
-import { currentUser } from '@clerk/nextjs/server'
+import { getSessionUser } from '@/lib/user'
 import prisma from '@/lib/db'
 import MainLayout from '@/components/main-layout'
 import PageHeader from '@/components/page-header'
@@ -27,7 +27,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 export default async function ProfilePage() {
-  const user = await currentUser()
+  const user = await getSessionUser()
   if (!user) return null
 
   const [weekly, tracked, totalSessions, primeira] = await Promise.all([
@@ -66,7 +66,8 @@ export default async function ProfilePage() {
             <div className='min-w-0'>
               <p className='truncate text-lg font-semibold'>{user.fullName ?? user.firstName}</p>
               <p className='truncate text-sm text-muted-foreground'>
-                {user.primaryEmailAddress?.emailAddress}
+                {/* Visitante não tem e-mail; a linha vira o convite de conta */}
+                {user.isGuest ? 'Conta de teste, sem login' : user.email}
               </p>
             </div>
           </CardContent>

@@ -1,6 +1,6 @@
 import React from 'react'
 import Link from 'next/link'
-import { currentUser } from '@clerk/nextjs/server'
+import { getSessionUser } from '@/lib/user'
 import { AlertCircle, ChevronRight } from 'lucide-react'
 import prisma from '@/lib/db'
 import { trainingDayLabel } from '@/lib/training-day'
@@ -8,7 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from './ui/alert'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 
 async function TreinosCard() {
-  const user = await currentUser()
+  const user = await getSessionUser()
   if (!user) return null
 
   const treinos = await prisma.training.findMany({

@@ -1,11 +1,10 @@
 'use server'
 
-import { currentUser } from "@clerk/nextjs/server"
+import { ensureUser, getSessionUser } from '@/lib/user'
 import type { FormTrainingType } from "./_schema"
 import prisma from "@/lib/db"
 import { revalidatePath } from "next/cache"
 import { trainingDayLabel } from "@/lib/training-day"
-import { ensureUser } from "@/lib/user"
 
 type ActionResult = { ok: boolean; message: string }
 
@@ -121,7 +120,7 @@ export async function createTraining(formData: FormTrainingType): Promise<Action
 }
 
 export async function updateTraining(id: string, formData: FormTrainingType): Promise<ActionResult> {
-  const user = await currentUser()
+  const user = await getSessionUser()
   if (!user) return { ok: false, message: 'Usuário não autenticado' }
 
   const owned = await prisma.training.findFirst({
@@ -171,7 +170,7 @@ export async function updateTraining(id: string, formData: FormTrainingType): Pr
 }
 
 export async function deleteTraining(id: string): Promise<ActionResult> {
-  const user = await currentUser()
+  const user = await getSessionUser()
   if (!user) return { ok: false, message: 'Usuário não autenticado' }
 
   const owned = await prisma.training.findFirst({

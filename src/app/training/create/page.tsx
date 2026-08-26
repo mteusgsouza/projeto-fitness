@@ -1,11 +1,11 @@
 import React from 'react'
-import { currentUser } from '@clerk/nextjs/server'
+import { getSessionUser } from '@/lib/user'
 import prisma from '@/lib/db'
 import FormTrining from './form'
 import PageHeader from '@/components/page-header'
 
 async function CreateTreino() {
-  const user = await currentUser()
+  const user = await getSessionUser()
   if (!user) return null
 
   const [exercises, trainings] = await Promise.all([

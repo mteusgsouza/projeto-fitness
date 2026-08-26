@@ -1,7 +1,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { currentUser } from '@clerk/nextjs/server'
+import { getSessionUser } from '@/lib/user'
 import { AlertCircle } from 'lucide-react'
 import prisma from '@/lib/db'
 import { trainingDayLabel } from '@/lib/training-day'
@@ -16,7 +16,7 @@ async function WorkoutPage({
   params: Promise<{ trainingId: string }>
 }) {
   const trainingId = (await params).trainingId
-  const user = await currentUser()
+  const user = await getSessionUser()
   if (!user) return null
 
   const training = await prisma.training.findFirst({
