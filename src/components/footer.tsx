@@ -13,7 +13,7 @@ const GITHUB_URL = `https://github.com/${GITHUB_USER}`
 function Footer() {
   return (
     <footer className='mt-auto hidden border-t border-border bg-card/40 md:block'>
-      <div className='container mx-auto flex flex-col items-center gap-3 px-4 py-6 text-sm text-muted-foreground md:h-16 md:flex-row md:justify-between md:gap-0 md:py-0 md:px-6'>
+      <div className='container relative mx-auto flex flex-col items-center gap-3 px-4 py-6 text-sm text-muted-foreground md:h-16 md:flex-row md:justify-between md:gap-0 md:py-0 md:px-6'>
         <Link href='/' className='flex items-center gap-2 font-medium text-foreground transition-opacity hover:opacity-80'>
           <Logo className='size-4 text-primary' />
           Projeto Fitness
